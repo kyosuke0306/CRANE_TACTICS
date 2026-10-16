@@ -75,7 +75,7 @@ export async function analyze(input: AnalyzeInput, settings: GeminiSettings): Pr
       body: JSON.stringify({ model: settings.model || DEFAULT_MODEL, body }),
     });
   } else {
-    if (!settings.apiKey) throw new Error("APIキーが設定されていません。右上の ⚙ から入力してください。");
+    if (!settings.apiKey) throw new Error("APIキーが設定されていません。右上の設定ボタンから入力してください。");
     const model = settings.model || DEFAULT_MODEL;
     res = await fetch(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
       method: "POST",

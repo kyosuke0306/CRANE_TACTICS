@@ -13,7 +13,7 @@
 
 公開ページ: https://kyosuke0306.github.io/CRANE_TACTICS/
 
-1. 右上の ⚙ から Gemini APIキーを入力（[Google AI Studio](https://aistudio.google.com/apikey) で無料取得）
+1. 右上の設定ボタン（歯車）から Gemini APIキーを入力（[Google AI Studio](https://aistudio.google.com/apikey) で無料取得）
 2. 台を撮る → 「作戦を立てる」
 3. 手順をめくりながらプレイ → 結果を入れて「次の手を考える」
 
