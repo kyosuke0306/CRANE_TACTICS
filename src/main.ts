@@ -1,4 +1,5 @@
 import "./style.css";
+import { takePhoto } from "./camera";
 import { analyze, demoAnalysis, DEFAULT_MODEL, PROXY_URL, type AnalyzeInput, type GeminiSettings } from "./gemini";
 import { Overlay } from "./overlay";
 import type { Analysis, PlayLog } from "./types";
@@ -75,7 +76,7 @@ settingsDlg.addEventListener("close", () => {
 });
 
 // ---------- 写真の読み込み（送る前に縮小して通信量を節約） ----------
-async function readPhoto(file: File): Promise<{ base64: string; mime: string; img: HTMLImageElement }> {
+async function readPhoto(file: Blob): Promise<{ base64: string; mime: string; img: HTMLImageElement }> {
   const url = URL.createObjectURL(file);
   try {
     const src = await loadImage(url);
@@ -102,7 +103,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function onPhoto(file: File | undefined, keepContext: boolean) {
+async function onPhoto(file: Blob | null | undefined, keepContext: boolean) {
   if (!file) return;
   hideError();
   try {
@@ -124,6 +125,18 @@ async function onPhoto(file: File | undefined, keepContext: boolean) {
     showError((e as Error).message);
   }
 }
+
+// アプリ内カメラで撮る。使えないときだけ端末標準の撮影画面に任せる
+async function capture(keepContext: boolean, fallbackInput: string) {
+  const result = await takePhoto();
+  if (result === "unavailable") {
+    $<HTMLInputElement>(fallbackInput).click();
+    return;
+  }
+  onPhoto(result, keepContext);
+}
+$("cameraBtn").addEventListener("click", () => capture(false, "cameraInput"));
+$("retakeBtn").addEventListener("click", () => capture(true, "retakeInput"));
 
 $<HTMLInputElement>("cameraInput").addEventListener("change", (e) => {
   const input = e.target as HTMLInputElement;
