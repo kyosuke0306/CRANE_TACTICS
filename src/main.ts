@@ -133,6 +133,7 @@ async function onPhoto(file: Blob | null | undefined, isResult: boolean) {
       currentThumb = p.thumb;
       overlay.setAnalysis(null);
       $("photoInfo").hidden = true;
+      $("confTile").hidden = true;
       resultEl.hidden = true;
       pendingHints = { previous: analysis, beforePhoto: before, plays };
       run(pendingHints);
@@ -175,6 +176,7 @@ function resetAll() {
   pendingHints = undefined;
   overlay.setAnalysis(null);
   $("photoInfo").hidden = true;
+  $("confTile").hidden = true;
   preAnalyze.hidden = false;
   resultEl.hidden = true;
   reanalyzeBtn.hidden = true;
@@ -247,6 +249,7 @@ reanalyzeBtn.addEventListener("click", () => {
 
 // ---------- 結果の表示 ----------
 const CONF_LABEL = { low: "自信：低め", medium: "自信：ふつう", high: "自信：高め" } as const;
+const CONF_WORD = { low: "低め", medium: "ふつう", high: "高め" } as const;
 const SVG_NS = "http://www.w3.org/2000/svg";
 const MAX_COINS = 10;
 
@@ -391,8 +394,10 @@ function renderResult() {
   miniTile("clawTile", clawIcon(analysis.clawCount), analysis.clawCount ? `${analysis.clawCount}本爪` : "アーム", analysis.claw);
   $("photoInfo").hidden = false;
   const conf = $("confTile");
-  conf.className = `tile mini conf-tile conf-${analysis.confidence}`;
+  conf.hidden = false;
+  conf.className = `conf-badge conf-${analysis.confidence}`;
   conf.setAttribute("aria-label", CONF_LABEL[analysis.confidence]);
+  $("confLevel").textContent = CONF_WORD[analysis.confidence];
 
   const last = $("lastResult");
   const info = analysis.lastResult === "first" ? null : RESULT_INFO[analysis.lastResult];

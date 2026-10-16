@@ -397,6 +397,39 @@ canvas {
   color: #fff;
   font-size: 11px;
 }
+.conf-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: rgba(10, 8, 14, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.conf-badge b {
+  display: block;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+.conf-badge .meter {
+  height: 24px;
+  gap: 3px;
+}
+.conf-badge .meter i {
+  width: 6px;
+}
+.conf-low b { color: #ff8fa3; }
+.conf-medium b { color: var(--yellow); }
+.conf-high b { color: var(--green); }
 .photo-info .mini-ico {
   width: 15px;
   height: 15px;
