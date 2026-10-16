@@ -174,14 +174,11 @@ main {
 
 /* ---- start ---- */
 .start {
-  padding-top: 12vh;
-  text-align: center;
-}
-.lead {
-  font-size: 24px;
-  font-weight: 900;
-  line-height: 1.5;
-  margin: 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100dvh - 90px - env(safe-area-inset-top));
+  padding-bottom: 40px;
 }
 .start-actions {
   display: flex;
@@ -192,26 +189,6 @@ main {
   min-height: 56px;
   font-size: 17px;
 }
-.tips {
-  list-style: none;
-  padding: 0;
-  margin: 32px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 2;
-}
-.tips li::before {
-  content: "";
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  margin-right: 6px;
-  vertical-align: -1px;
-  background: var(--yellow);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='4.5'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='4.5'/%3E%3C/svg%3E") center / contain no-repeat;
-}
-
 /* ---- board ---- */
 .stage {
   position: relative;
