@@ -1,5 +1,5 @@
 import { RESPONSE_SCHEMA, SYSTEM_PROMPT } from "./tactics";
-import type { Analysis, Arrow, Box, PlayLog, Point } from "./types";
+import type { Analysis, Arrow, Box, PlayLog, Point, Pose } from "./types";
 
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 // 通常版（gemini-flash-latest）はいつも混雑しているので、軽い版を標準にする
@@ -146,17 +146,34 @@ function toPoint(v: unknown, fallback: Point): Point {
   return [clamp(v[0]), clamp(v[1])];
 }
 
+function toPose(v: unknown, fallback: Box): Pose | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const p = v as { box?: unknown; angle?: unknown };
+  const angle = Number(p.angle);
+  return { box: toBox(p.box, fallback), angle: Number.isFinite(angle) ? ((angle % 360) + 360) % 360 : 0 };
+}
+
+function toTries(v: unknown): { min: number; max: number } {
+  const t = (v ?? {}) as { min?: unknown; max?: unknown };
+  const lo = Math.round(Number(t.min));
+  const hi = Math.round(Number(t.max));
+  const min = Math.min(30, Math.max(1, Number.isFinite(lo) ? lo : 3));
+  const max = Math.min(30, Math.max(min, Number.isFinite(hi) ? hi : min));
+  return { min, max };
+}
+
 const ARROWS: Arrow[] = ["left", "right", "up", "down", "rotate_cw", "rotate_ccw", "none"];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalize(a: any): Analysis {
   const prizeBox = toBox(a?.prize?.box, [400, 300, 600, 600]);
   const center: Point = [(prizeBox[0] + prizeBox[2]) / 2, (prizeBox[1] + prizeBox[3]) / 2];
+  const holeBox = toBox(a?.hole?.box, [700, 700, 950, 950]);
   return {
     setup: String(a?.setup ?? "不明"),
     claw: String(a?.claw ?? "不明"),
     prize: { label: String(a?.prize?.label ?? "景品"), box: prizeBox },
-    hole: { box: toBox(a?.hole?.box, [700, 700, 950, 950]) },
+    hole: { box: holeBox },
     obstacles: Array.isArray(a?.obstacles)
       ? a.obstacles.map((o: { label?: string; box?: unknown }) => ({
           label: String(o?.label ?? ""),
@@ -164,13 +181,19 @@ export function normalize(a: any): Analysis {
         }))
       : [],
     steps: (Array.isArray(a?.steps) ? a.steps : []).slice(0, 6).map(
-      (s: { title?: string; text?: string; target?: unknown; arrow?: string }, i: number) => ({
+      (s: { title?: string; text?: string; target?: unknown; arrow?: string; after?: unknown }, i: number) => ({
         title: String(s?.title ?? `手順${i + 1}`),
         text: String(s?.text ?? ""),
         target: toPoint(s?.target, center),
         arrow: ARROWS.includes(s?.arrow as Arrow) ? (s.arrow as Arrow) : "none",
+        after: toPose(s?.after, prizeBox),
       }),
     ),
+    tries: toTries(a?.tries),
+    goal: {
+      ...(toPose(a?.goal, holeBox) ?? { box: holeBox, angle: 0 }),
+      text: String(a?.goal?.text ?? "落とし口に落ちる"),
+    },
     cautions: Array.isArray(a?.cautions) ? a.cautions.map(String) : [],
     confidence: ["low", "medium", "high"].includes(a?.confidence) ? a.confidence : "low",
   };
@@ -190,20 +213,25 @@ export function demoAnalysis(): Analysis {
         text: "アームの中心を箱の左端より少し内側に。左の爪が石に刺さり、箱を右へ押します。",
         target: [740, 170],
         arrow: "right",
+        after: { box: [620, 260, 880, 510], angle: 0 },
       },
       {
         title: "右奥の角を回す",
         text: "右奥の角に爪を掛け、右手前の角を穴へ向けるように回します。",
-        target: [650, 370],
+        target: [650, 470],
         arrow: "rotate_cw",
+        after: { box: [630, 340, 870, 590], angle: 25 },
       },
       {
         title: "最後のひと押し",
         text: "穴に半分かかったら、左側の端を上から押さえて傾けます。",
-        target: [760, 300],
+        target: [760, 400],
         arrow: "none",
+        after: { box: [650, 450, 860, 680], angle: 40 },
       },
     ],
+    tries: { min: 4, max: 7 },
+    goal: { box: [680, 560, 860, 740], angle: 70, text: "角から穴に傾いて落ちる" },
     cautions: [
       "写真だけではアームの強さは分かりません。1回目の動き方を見て続けるか決めましょう。",
       "1人各1個までの制限があります。",

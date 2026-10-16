@@ -231,14 +231,37 @@ reanalyzeBtn.addEventListener("click", () => {
 
 // ---------- 結果の表示 ----------
 const CONF_LABEL = { low: "自信：低め", medium: "自信：ふつう", high: "自信：高め" } as const;
+const SVG_NS = "http://www.w3.org/2000/svg";
+const MAX_COINS = 10;
+
+function svgEl(markup: string, cls: string): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("class", cls);
+  svg.innerHTML = markup;
+  return svg;
+}
+
+/** 見込み回数をコインの数で見せる（min までは塗り、max までは枠だけ） */
+function renderTries(t: { min: number; max: number }) {
+  const shown = Math.min(t.max, MAX_COINS);
+  $("coins").replaceChildren(
+    ...Array.from({ length: shown }, (_, i) =>
+      svgEl('<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/>', i < t.min ? "coin" : "coin maybe"),
+    ),
+  );
+  $("triesNum").textContent = t.min === t.max ? String(t.min) : `${t.min}〜${t.max}`;
+}
 
 function renderResult() {
   if (!analysis) return;
   $("setupChip").textContent = analysis.setup;
   $("clawChip").textContent = analysis.claw;
-  const conf = $("confChip");
-  conf.textContent = CONF_LABEL[analysis.confidence];
-  conf.className = `chip conf-${analysis.confidence}`;
+  renderTries(analysis.tries);
+  const conf = $("confTile");
+  conf.className = `tile conf-tile conf-${analysis.confidence}`;
+  conf.setAttribute("aria-label", CONF_LABEL[analysis.confidence]);
 
   const list = $("cautionList");
   list.replaceChildren(
@@ -251,9 +274,13 @@ function renderResult() {
   renderStep();
 }
 
+const FLAG_SVG = '<path d="M6 21V4"/><path d="M6 4h11l-2.5 4L17 12H6"/>';
+
 function renderStep() {
   if (!analysis) return;
   const steps = analysis.steps;
+  const last = steps.length; // 最後の「ゴール」
+  const isGoal = step === last;
   const s = steps[step];
   const dots = $("stepDots");
   dots.replaceChildren(
@@ -265,17 +292,31 @@ function renderStep() {
       b.addEventListener("click", () => goStep(i));
       return b;
     }),
+    (() => {
+      const b = document.createElement("button");
+      b.className = `goal-dot${isGoal ? " active" : ""}`;
+      b.setAttribute("aria-label", "ゴール");
+      b.append(svgEl(FLAG_SVG, "ico"));
+      b.addEventListener("click", () => goStep(last));
+      return b;
+    })(),
   );
-  $("stepTitle").textContent = s ? `${step + 1}. ${s.title}` : "手順が見つかりませんでした";
-  $("stepText").textContent = s?.text ?? "写真を撮り直すか、印を直して作戦を立て直してください。";
+  $("stepCard").classList.toggle("goal", isGoal);
+  if (isGoal) {
+    $("stepTitle").textContent = "GET!";
+    $("stepText").textContent = analysis.goal.text;
+  } else {
+    $("stepTitle").textContent = s ? `${step + 1}. ${s.title}` : "手順が見つかりませんでした";
+    $("stepText").textContent = s?.text ?? "写真を撮り直すか、印を直して作戦を立て直してください。";
+  }
   $<HTMLButtonElement>("prevStep").disabled = step <= 0;
-  $<HTMLButtonElement>("nextStep").disabled = step >= steps.length - 1;
+  $<HTMLButtonElement>("nextStep").disabled = step >= last;
   overlay.setStep(step);
 }
 
 function goStep(i: number) {
   if (!analysis) return;
-  step = Math.max(0, Math.min(analysis.steps.length - 1, i));
+  step = Math.max(0, Math.min(analysis.steps.length, i));
   renderStep();
 }
 $("prevStep").addEventListener("click", () => goStep(step - 1));
@@ -309,7 +350,8 @@ document.querySelectorAll<HTMLButtonElement>(".fb-buttons .btn-chip").forEach((b
 nextMoveBtn.addEventListener("click", () => {
   if (!analysis) return;
   const note = fbNote.value.trim();
-  if (selectedResult) logs.push({ stepIndex: step, result: note ? `${selectedResult}（${note}）` : selectedResult });
+  const stepIndex = Math.min(step, Math.max(0, analysis.steps.length - 1));
+  if (selectedResult) logs.push({ stepIndex, result: note ? `${selectedResult}（${note}）` : selectedResult });
   const previous = analysis;
   const hints: AnalyzeInput["hints"] = {
     previous,

@@ -1,4 +1,4 @@
-import type { Analysis, Arrow, Box, Point } from "./types";
+import type { Analysis, Arrow, Box, Point, Pose } from "./types";
 
 type DragTarget =
   | { kind: "target" }
@@ -48,12 +48,38 @@ export class Overlay {
   setAnalysis(a: Analysis | null) {
     this.analysis = a;
     this.step = 0;
-    this.draw();
+    this.syncAnimation();
   }
 
+  /** i が手順の数と同じときは「ゴール」（取れる瞬間）を表示する */
   setStep(i: number) {
     this.step = i;
-    this.draw();
+    this.syncAnimation();
+  }
+
+  // ---- ゴール表示のアニメーション（今の位置 → 各手のあと → 取れる瞬間 を繰り返す） ----
+  private animId = 0;
+  private animStart = 0;
+
+  private get isGoal() {
+    return Boolean(this.analysis && this.step === this.analysis.steps.length);
+  }
+
+  private syncAnimation() {
+    cancelAnimationFrame(this.animId);
+    this.animId = 0;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (this.isGoal && !reduce) {
+      this.animStart = performance.now();
+      const tick = () => {
+        this.draw();
+        this.animId = requestAnimationFrame(tick);
+      };
+      tick();
+    } else {
+      this.animStart = 0;
+      this.draw();
+    }
   }
 
   private layout() {
@@ -113,13 +139,26 @@ export class Overlay {
     this.drawBox(a.hole.box, COLORS.hole, "落とし口", false, "rgba(46,229,157,0.22)");
     this.drawBox(a.prize.box, COLORS.prize, a.prize.label, false, "rgba(255,210,63,0.12)");
 
-    const s = a.steps[this.step];
-    if (s) {
-      this.drawArrow(a.prize.box, s.arrow);
-      a.steps.forEach((other, i) => {
-        if (i !== this.step) this.drawGhostTarget(other.target, i + 1);
-      });
-      this.drawTarget(s.target, this.step + 1);
+    if (this.isGoal) {
+      this.drawGoal(a);
+    } else {
+      const s = a.steps[this.step];
+      if (s) {
+        // この手の前の位置（2手目以降は前の手のあと）→ この手のあと
+        const before = this.step > 0 ? a.steps[this.step - 1].after : undefined;
+        if (before) this.drawPose(before, "rgba(255,255,255,0.35)", true);
+        if (s.after) {
+          this.drawMove(before ?? { box: a.prize.box, angle: 0 }, s.after);
+          this.drawPose(s.after, "#ffffff", true);
+          if (s.arrow === "rotate_cw" || s.arrow === "rotate_ccw") this.drawArrow(s.after.box, s.arrow);
+        } else {
+          this.drawArrow(a.prize.box, s.arrow);
+        }
+        a.steps.forEach((other, i) => {
+          if (i !== this.step) this.drawGhostTarget(other.target, i + 1);
+        });
+        this.drawTarget(s.target, this.step + 1);
+      }
     }
 
     if (this.editable) {
@@ -151,6 +190,100 @@ export class Overlay {
       ctx.fill();
       ctx.fillStyle = "#14121a";
       ctx.fillText(label, x + fs / 2, ly + fs * 1.08);
+    }
+    ctx.restore();
+  }
+
+  /** 回転つきの景品の輪郭 */
+  private drawPose(p: Pose, color: string, dashed: boolean, fill?: string) {
+    const { ctx } = this;
+    const [x, y, w, h] = this.rect(p.box);
+    ctx.save();
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.rotate((p.angle * Math.PI) / 180);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5 * this.scale;
+    if (dashed) ctx.setLineDash([7 * this.scale, 5 * this.scale]);
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+
+  /** 景品の動き（中心から中心への矢印） */
+  private drawMove(from: Pose, to: Pose) {
+    const [fx, fy, fw, fh] = this.rect(from.box);
+    const [tx, ty, tw, th] = this.rect(to.box);
+    const x1 = fx + fw / 2;
+    const y1 = fy + fh / 2;
+    const x2 = tx + tw / 2;
+    const y2 = ty + th / 2;
+    if (Math.hypot(x2 - x1, y2 - y1) < 18 * this.scale) return;
+    const { ctx } = this;
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    ctx.save();
+    ctx.strokeStyle = COLORS.arrow;
+    ctx.fillStyle = COLORS.arrow;
+    ctx.lineWidth = 5 * this.scale;
+    ctx.lineCap = "round";
+    ctx.shadowColor = "rgba(0,0,0,0.6)";
+    ctx.shadowBlur = 6;
+    const head = 15 * this.scale;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2 - Math.cos(ang) * head * 0.5, y2 - Math.sin(ang) * head * 0.5);
+    ctx.stroke();
+    arrowHead(ctx, x2, y2, ang, head);
+    ctx.restore();
+  }
+
+  /** ゴール：今の位置から取れる瞬間までを動かして見せる */
+  private drawGoal(a: Analysis) {
+    const keys: Pose[] = [
+      { box: a.prize.box, angle: 0 },
+      ...a.steps.flatMap((s) => (s.after ? [s.after] : [])),
+      { box: a.goal.box, angle: a.goal.angle },
+    ];
+    // 通り道（うすく）
+    keys.slice(1, -1).forEach((k) => this.drawPose(k, "rgba(255,255,255,0.3)", true));
+
+    const SEG = 750;
+    const HOLD_START = 500;
+    const HOLD_END = 1300;
+    const total = HOLD_START + SEG * (keys.length - 1) + HOLD_END;
+    const animating = this.animId !== 0 || this.animStart > 0;
+    const t = animating ? (performance.now() - this.animStart) % total : total - 1;
+    const moving = Math.min(Math.max(t - HOLD_START, 0), SEG * (keys.length - 1));
+    const seg = Math.min(keys.length - 2, Math.floor(moving / SEG));
+    const f = ease(Math.min(1, (moving - seg * SEG) / SEG));
+    const atGoal = t >= HOLD_START + SEG * (keys.length - 1);
+    const pose = atGoal ? keys[keys.length - 1] : lerpPose(keys[seg], keys[seg + 1], f);
+
+    // ゴールの形（点線）と、動く景品
+    this.drawPose(keys[keys.length - 1], COLORS.hole, true);
+    this.drawPose(pose, COLORS.prize, false, atGoal ? "rgba(46,229,157,0.45)" : "rgba(255,210,63,0.45)");
+    if (atGoal) this.drawBurst(a.goal.box);
+  }
+
+  private drawBurst(b: Box) {
+    const { ctx } = this;
+    const [x, y, w, h] = this.rect(b);
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const r1 = Math.max(w, h) * 0.6;
+    const r2 = r1 + 14 * this.scale;
+    ctx.save();
+    ctx.strokeStyle = COLORS.prize;
+    ctx.lineWidth = 3.5 * this.scale;
+    ctx.lineCap = "round";
+    for (let i = 0; i < 8; i++) {
+      const ang = (i / 8) * Math.PI * 2 + Math.PI / 8;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1);
+      ctx.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
+      ctx.stroke();
     }
     ctx.restore();
   }
@@ -376,4 +509,13 @@ function arrowHead(ctx: CanvasRenderingContext2D, x: number, y: number, angle: n
   ctx.lineTo(x + Math.cos(angle - 2.5) * size, y + Math.sin(angle - 2.5) * size);
   ctx.closePath();
   ctx.fill();
+}
+
+function ease(t: number) {
+  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+}
+
+function lerpPose(a: Pose, b: Pose, t: number): Pose {
+  const box = a.box.map((v, i) => v + (b.box[i] - v) * t) as Box;
+  return { box, angle: a.angle + (b.angle - a.angle) * t };
 }

@@ -45,6 +45,12 @@ export const SYSTEM_PROMPT = `
 - box は [ymin, xmin, ymax, xmax]、点は [y, x] の順。
 - 各手順の target は「アームの中心をどこに下ろすか」を表す点。
 - arrow は「その手で景品をどちらへ動かしたいか」（写真上の向き）。
+- 各手順の after は「その手がうまくいったあとの景品」。box はそのときの景品の範囲、angle は写真上で時計回りに何度回っているか（今の向きが 0）。
+- goal は「取れる瞬間の景品」。落とし口に落ちかけている位置・向きを box と angle で表し、text に形を一言で（例: 縦になって棒の間から落ちる）。
+
+見込み回数:
+- tries は「この手順で取れるまでに必要なプレイ回数」の見込みを min〜max で。
+- 1手が1回で決まるとは限らない。石の上・橋渡しなど1回で少ししか動かない設定や、アームが弱そうなときは多めに見積もる。
 
 答え方のルール:
 - 日本語で、短く具体的に。手順の text は1〜2文。
@@ -53,6 +59,15 @@ export const SYSTEM_PROMPT = `
 
 ${TACTICS_RULES}
 `;
+
+const POSE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    box: { type: "ARRAY", items: { type: "NUMBER" } },
+    angle: { type: "NUMBER", description: "写真上で時計回りに何度回っているか（今の向きが0）" },
+  },
+  required: ["box", "angle"],
+};
 
 /** Gemini の構造化出力用スキーマ（OpenAPI サブセット） */
 export const RESPONSE_SCHEMA = {
@@ -96,12 +111,23 @@ export const RESPONSE_SCHEMA = {
             type: "STRING",
             enum: ["left", "right", "up", "down", "rotate_cw", "rotate_ccw", "none"],
           },
+          after: POSE_SCHEMA,
         },
-        required: ["title", "text", "target", "arrow"],
+        required: ["title", "text", "target", "arrow", "after"],
       },
+    },
+    tries: {
+      type: "OBJECT",
+      properties: { min: { type: "INTEGER" }, max: { type: "INTEGER" } },
+      required: ["min", "max"],
+    },
+    goal: {
+      type: "OBJECT",
+      properties: { ...POSE_SCHEMA.properties, text: { type: "STRING" } },
+      required: ["box", "angle", "text"],
     },
     cautions: { type: "ARRAY", items: { type: "STRING" } },
     confidence: { type: "STRING", enum: ["low", "medium", "high"] },
   },
-  required: ["setup", "claw", "prize", "hole", "obstacles", "steps", "cautions", "confidence"],
+  required: ["setup", "claw", "prize", "hole", "obstacles", "steps", "tries", "goal", "cautions", "confidence"],
 };

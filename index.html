@@ -91,13 +91,22 @@
         </div>
 
         <div id="result" hidden>
+          <div class="summary">
+            <div class="tile tries-tile" aria-label="取れるまでの見込み回数">
+              <p class="tries-num"><b id="triesNum"></b><small>回</small></p>
+              <div class="coins" id="coins"></div>
+            </div>
+            <div class="tile conf-tile" id="confTile">
+              <div class="meter" aria-hidden="true"><i></i><i></i><i></i></div>
+              <small>自信</small>
+            </div>
+          </div>
           <div class="chips">
             <span class="chip" id="setupChip"></span>
             <span class="chip" id="clawChip"></span>
-            <span class="chip" id="confChip"></span>
           </div>
 
-          <div class="step-card">
+          <div class="step-card" id="stepCard">
             <div class="step-head">
               <button id="prevStep" class="icon-btn small" aria-label="前の手順"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
               <div class="step-dots" id="stepDots"></div>

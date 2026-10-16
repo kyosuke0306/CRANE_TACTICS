@@ -293,14 +293,90 @@ canvas {
   font-size: 12px;
   color: var(--muted);
 }
-.chip.conf-low {
-  color: #ffb3c0;
-  border-color: rgba(255, 77, 109, 0.5);
+
+/* ---- 見込み回数・自信 ---- */
+.summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 14px;
 }
-.chip.conf-high {
-  color: var(--green);
-  border-color: rgba(46, 229, 157, 0.5);
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
 }
+.tries-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.coins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.coin {
+  width: 20px;
+  height: 20px;
+  fill: var(--yellow);
+  stroke: #b8901a;
+  stroke-width: 2;
+}
+.coin.maybe {
+  fill: none;
+  stroke: var(--yellow);
+  stroke-dasharray: 3 2.5;
+  opacity: 0.7;
+}
+.tries-num {
+  margin: 0;
+  white-space: nowrap;
+  font-family: "Dela Gothic One", sans-serif;
+  line-height: 1;
+}
+.tries-num b {
+  font-weight: 400;
+  font-size: 30px;
+  color: var(--yellow);
+}
+.tries-num small {
+  margin-left: 3px;
+  font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--muted);
+}
+.conf-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 64px;
+}
+.conf-tile small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.meter {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 22px;
+}
+.meter i {
+  width: 7px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.meter i:nth-child(1) { height: 40%; }
+.meter i:nth-child(2) { height: 70%; }
+.meter i:nth-child(3) { height: 100%; }
+.conf-low .meter i:nth-child(1) { background: var(--pink); }
+.conf-medium .meter i:nth-child(-n + 2) { background: var(--yellow); }
+.conf-high .meter i { background: var(--green); }
 
 .step-card {
   background: var(--panel);
@@ -332,6 +408,32 @@ canvas {
   background: var(--pink);
   border-color: var(--pink);
   color: #fff;
+}
+.step-dots .goal-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green);
+  border-color: rgba(46, 229, 157, 0.5);
+}
+.step-dots .goal-dot .ico {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.5;
+}
+.step-dots .goal-dot.active {
+  background: var(--green);
+  border-color: var(--green);
+  color: #0c2a1e;
+}
+.step-card.goal {
+  border-color: rgba(46, 229, 157, 0.6);
+}
+.step-card.goal h2 {
+  font-family: "Dela Gothic One", sans-serif;
+  font-weight: 400;
+  color: var(--green);
+  letter-spacing: 0.04em;
 }
 .step-card h2 {
   margin: 12px 0 6px;

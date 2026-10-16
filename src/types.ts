@@ -18,6 +18,14 @@ export interface Step {
   target: Point;
   /** 景品をどちらへ動かしたいか */
   arrow: Arrow;
+  /** この手がうまくいったあとの景品の位置と向き（予想） */
+  after?: Pose;
+}
+
+/** 景品の置かれ方。angle は写真上での時計回りの回転（度） */
+export interface Pose {
+  box: Box;
+  angle: number;
 }
 
 export interface Analysis {
@@ -27,6 +35,10 @@ export interface Analysis {
   hole: { box: Box };
   obstacles: { label: string; box: Box }[];
   steps: Step[];
+  /** 取れるまでの見込みプレイ回数 */
+  tries: { min: number; max: number };
+  /** 取れる瞬間の景品の形 */
+  goal: Pose & { text: string };
   cautions: string[];
   confidence: "low" | "medium" | "high";
 }
