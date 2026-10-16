@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#14121a" />
+    <meta name="description" content="クレーンゲームの台の写真から、いっしょに作戦を考えるアプリ" />
+    <title>CRANE TACTICS</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314121a'/%3E%3Cpath d='M32 8v18M20 40l12-14 12 14M20 40l-4 10M44 40l4 10' stroke='%23ffd23f' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="top">
+      <h1 class="logo"><span>CRANE</span><span>TACTICS</span></h1>
+      <button id="settingsBtn" class="icon-btn" aria-label="設定">⚙</button>
+    </header>
+
+    <main>
+      <!-- 1. 写真を選ぶ -->
+      <section id="start" class="start">
+        <p class="lead">台の写真から、<br />いっしょに作戦を立てよう。</p>
+        <div class="start-actions">
+          <label class="btn btn-primary">
+            📷 台を撮る
+            <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
+          </label>
+          <label class="btn btn-ghost">
+            🖼 写真を選ぶ
+            <input id="fileInput" type="file" accept="image/*" hidden />
+          </label>
+        </div>
+        <ul class="tips">
+          <li>景品と落とし口が両方入るように撮る</li>
+          <li>ガラスの反射が少ない斜め前から</li>
+          <li>アームも写っていると精度が上がる</li>
+        </ul>
+      </section>
+
+      <!-- 2. 写真＋作戦 -->
+      <section id="board" class="board" hidden>
+        <div class="stage">
+          <canvas id="canvas"></canvas>
+          <div id="loading" class="loading" hidden>
+            <div class="claw-anim" aria-hidden="true"><span></span></div>
+            <p id="loadingText">台を観察中…</p>
+          </div>
+        </div>
+
+        <div id="preAnalyze" class="row">
+          <button id="analyzeBtn" class="btn btn-primary wide">🎯 作戦を立てる</button>
+          <button id="resetBtn" class="btn btn-ghost">撮り直す</button>
+        </div>
+
+        <div id="result" hidden>
+          <div class="chips">
+            <span class="chip" id="setupChip"></span>
+            <span class="chip" id="clawChip"></span>
+            <span class="chip" id="confChip"></span>
+          </div>
+
+          <div class="step-card">
+            <div class="step-head">
+              <button id="prevStep" class="icon-btn small" aria-label="前の手順">‹</button>
+              <div class="step-dots" id="stepDots"></div>
+              <button id="nextStep" class="icon-btn small" aria-label="次の手順">›</button>
+            </div>
+            <h2 id="stepTitle"></h2>
+            <p id="stepText"></p>
+          </div>
+
+          <p class="edit-hint">印がずれていたら、指でドラッグして直せます。</p>
+          <button id="reanalyzeBtn" class="btn btn-ghost wide" hidden>✏️ 直した位置で作戦を立て直す</button>
+
+          <div class="feedback">
+            <h3>やってみた結果は？</h3>
+            <div class="fb-buttons">
+              <button class="btn btn-chip" data-result="取れた">🎉 取れた</button>
+              <button class="btn btn-chip" data-result="狙いどおりに動いた">動いた</button>
+              <button class="btn btn-chip" data-result="少しだけ動いた">少し動いた</button>
+              <button class="btn btn-chip" data-result="ほとんど動かなかった">動かない</button>
+              <button class="btn btn-chip" data-result="思っていない方向に動いた">変な方向へ</button>
+            </div>
+            <textarea id="fbNote" rows="2" placeholder="気づいたこと（任意）例: アームが弱くて箱に触れただけ"></textarea>
+            <div class="row">
+              <label class="btn btn-ghost">
+                📷 今の台を撮る
+                <input id="retakeInput" type="file" accept="image/*" capture="environment" hidden />
+              </label>
+              <button id="nextMoveBtn" class="btn btn-primary" disabled>次の手を考える</button>
+            </div>
+            <p class="fb-hint">景品が動いたら、今の台を撮り直すと次の手が正確になります。</p>
+          </div>
+
+          <details class="cautions">
+            <summary>注意点</summary>
+            <ul id="cautionList"></ul>
+          </details>
+
+          <button id="newBtn" class="btn btn-ghost wide">別の台を撮る</button>
+        </div>
+
+        <p id="error" class="error" hidden></p>
+      </section>
+
+      <div id="win" class="win" hidden>
+        <div class="win-card">
+          <p class="win-big">GET!</p>
+          <p>おめでとう！</p>
+          <button id="winClose" class="btn btn-primary">別の台へ</button>
+        </div>
+      </div>
+    </main>
+
+    <dialog id="settings">
+      <form method="dialog" class="settings-form">
+        <h2>設定</h2>
+        <div id="keyFields">
+          <label>
+            Gemini APIキー
+            <input id="apiKey" type="password" autocomplete="off" placeholder="AIza…" />
+          </label>
+          <p class="note">
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+            で無料で取得できます。キーはこのブラウザの中にだけ保存され、Google 以外には送られません。
+          </p>
+        </div>
+        <label>
+          モデル
+          <input id="model" type="text" placeholder="gemini-flash-latest" />
+        </label>
+        <p class="note">無料枠では送った写真が Google のモデル改善に使われる場合があります。</p>
+        <div class="row end">
+          <button value="cancel" class="btn btn-ghost">閉じる</button>
+          <button id="saveSettings" value="save" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
