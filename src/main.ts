@@ -58,6 +58,13 @@ function openSettings() {
   settingsDlg.showModal();
 }
 $("settingsBtn").addEventListener("click", openSettings);
+
+const tipsDlg = $<HTMLDialogElement>("tipsDlg");
+$("tipsBtn").addEventListener("click", () => tipsDlg.showModal());
+// 枠の外（背景）をタップしても閉じる
+tipsDlg.addEventListener("click", (e) => {
+  if (e.target === tipsDlg) tipsDlg.close();
+});
 settingsDlg.addEventListener("close", () => {
   if (settingsDlg.returnValue !== "save") return;
   settings = {

@@ -50,13 +50,16 @@ main {
 }
 
 .logo {
-  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0 12px 0 0;
   line-height: 0;
 }
 .logo-svg {
   display: block;
   height: 24px;
   width: auto;
+  max-width: 100%;
 }
 
 /* ---- buttons ---- */
@@ -471,6 +474,39 @@ dialog::backdrop {
   margin: 8px 0 0;
 }
 .note a {
+  color: var(--yellow);
+}
+
+.top-actions {
+  flex: none;
+  display: flex;
+  gap: 8px;
+}
+.tips-form h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+.tip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  display: grid;
+  gap: 10px;
+}
+.tip-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--panel-2);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.tip-list .ico {
+  width: 26px;
+  height: 26px;
   color: var(--yellow);
 }
 
