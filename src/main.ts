@@ -132,6 +132,7 @@ async function onPhoto(file: Blob | null | undefined, isResult: boolean) {
       history.push({ thumb: currentThumb, result: "first" });
       currentThumb = p.thumb;
       overlay.setAnalysis(null);
+      $("photoInfo").hidden = true;
       resultEl.hidden = true;
       pendingHints = { previous: analysis, beforePhoto: before, plays };
       run(pendingHints);
@@ -173,6 +174,7 @@ function resetAll() {
   history = [];
   pendingHints = undefined;
   overlay.setAnalysis(null);
+  $("photoInfo").hidden = true;
   preAnalyze.hidden = false;
   resultEl.hidden = true;
   reanalyzeBtn.hidden = true;
@@ -387,6 +389,7 @@ function renderResult() {
   const setup = SETUP_INFO[analysis.setupType];
   miniTile("setupTile", setup.icon, setup.label, analysis.setup);
   miniTile("clawTile", clawIcon(analysis.clawCount), analysis.clawCount ? `${analysis.clawCount}本爪` : "アーム", analysis.claw);
+  $("photoInfo").hidden = false;
   const conf = $("confTile");
   conf.className = `tile mini conf-tile conf-${analysis.confidence}`;
   conf.setAttribute("aria-label", CONF_LABEL[analysis.confidence]);

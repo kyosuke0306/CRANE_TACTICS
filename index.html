@@ -79,6 +79,14 @@
       <section id="board" class="board" hidden>
         <div class="stage">
           <canvas id="canvas"></canvas>
+          <div id="photoInfo" class="photo-info" hidden>
+            <div class="tile mini" id="setupTile"></div>
+            <div class="tile mini" id="clawTile"></div>
+            <div class="tile mini conf-tile" id="confTile">
+              <div class="meter" aria-hidden="true"><i></i><i></i><i></i></div>
+              <small>自信</small>
+            </div>
+          </div>
           <div id="loading" class="loading" hidden>
             <div class="claw-anim" aria-hidden="true"><span></span></div>
             <p id="loadingText">台を観察中…</p>
@@ -107,14 +115,6 @@
                 <p class="tries-num"><b id="triesNum"></b>回</p>
               </div>
               <p id="spent" class="spent" hidden></p>
-            </div>
-            <div class="info-row">
-              <div class="tile mini" id="setupTile"></div>
-              <div class="tile mini" id="clawTile"></div>
-              <div class="tile mini conf-tile" id="confTile">
-                <div class="meter" aria-hidden="true"><i></i><i></i><i></i></div>
-                <small>自信</small>
-              </div>
             </div>
           </div>
 

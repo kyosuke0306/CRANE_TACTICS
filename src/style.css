@@ -379,11 +379,28 @@ canvas {
   font-size: 12px;
   color: var(--muted);
 }
-.info-row {
+/* 写真の左上に小さく重ねる */
+.photo-info {
+  position: absolute;
+  top: 8px;
+  left: 8px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  padding: 0 4px;
+  gap: 10px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(10, 8, 14, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+.photo-info .tile.mini small {
+  color: #fff;
+  font-size: 11px;
+}
+.photo-info .mini-ico {
+  width: 15px;
+  height: 15px;
+  stroke: #fff;
 }
 .tile.mini {
   display: inline-flex;
