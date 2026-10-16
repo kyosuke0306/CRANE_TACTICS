@@ -174,7 +174,10 @@ async function run(hints?: AnalyzeInput["hints"]) {
   try {
     const a = isDemo
       ? await new Promise<Analysis>((r) => setTimeout(() => r(demoAnalysis()), 900))
-      : await analyze({ imageBase64: photo.base64, mimeType: photo.mime, hints }, settings);
+      : await analyze({ imageBase64: photo.base64, mimeType: photo.mime, hints }, settings, (msg) => {
+          clearInterval(timer);
+          loadingText.textContent = msg;
+        });
     analysis = a;
     step = 0;
     photoRetaken = false;

@@ -51,18 +51,12 @@ main {
 
 .logo {
   margin: 0;
-  font-family: "Dela Gothic One", sans-serif;
-  font-weight: 400;
-  font-size: 22px;
-  letter-spacing: 0.04em;
-  line-height: 1;
+  line-height: 0;
 }
-.logo span:first-child {
-  color: var(--yellow);
-}
-.logo span:last-child {
-  color: var(--pink);
-  margin-left: 0.2em;
+.logo-svg {
+  display: block;
+  height: 24px;
+  width: auto;
 }
 
 /* ---- buttons ---- */

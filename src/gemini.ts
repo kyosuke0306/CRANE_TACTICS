@@ -64,30 +64,56 @@ function buildRequestBody(input: AnalyzeInput) {
   };
 }
 
-export async function analyze(input: AnalyzeInput, settings: GeminiSettings): Promise<Analysis> {
-  const body = buildRequestBody(input);
-  let res: Response;
+// 混雑（503）や一時的なエラーのときに使う軽いモデル
+const FALLBACK_MODEL = "gemini-flash-lite-latest";
+const RETRY_WAITS = [2000, 5000];
 
-  if (PROXY_URL) {
-    res = await fetch(PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: settings.model || DEFAULT_MODEL, body }),
-    });
-  } else {
-    if (!settings.apiKey) throw new Error("APIキーが設定されていません。右上の設定ボタンから入力してください。");
-    const model = settings.model || DEFAULT_MODEL;
-    res = await fetch(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": settings.apiKey },
-      body: JSON.stringify(body),
-    });
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const isBusy = (status: number) => status === 500 || status === 503 || status === 504;
+
+export async function analyze(
+  input: AnalyzeInput,
+  settings: GeminiSettings,
+  onRetry?: (message: string) => void,
+): Promise<Analysis> {
+  const body = buildRequestBody(input);
+  if (!PROXY_URL && !settings.apiKey) {
+    throw new Error("APIキーが設定されていません。右上の設定ボタンから入力してください。");
+  }
+
+  const call = (model: string) =>
+    PROXY_URL
+      ? fetch(PROXY_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model, body }),
+        })
+      : fetch(`${API_BASE}/${encodeURIComponent(model)}:generateContent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": settings.apiKey },
+          body: JSON.stringify(body),
+        });
+
+  const model = settings.model || DEFAULT_MODEL;
+  let res = await call(model);
+  for (const wait of RETRY_WAITS) {
+    if (!isBusy(res.status)) break;
+    onRetry?.("Gemini が混雑中。もう一度試しています…");
+    await sleep(wait);
+    res = await call(model);
+  }
+  if (isBusy(res.status) && model !== FALLBACK_MODEL) {
+    onRetry?.("混雑しているので、軽いモデルで試しています…");
+    res = await call(FALLBACK_MODEL);
   }
 
   if (!res.ok) {
     const text = await res.text();
     if (res.status === 429) throw new Error("無料枠の上限に達しました。少し時間をおいてから試してください。");
     if (res.status === 400 && text.includes("API key")) throw new Error("APIキーが正しくないようです。");
+    if (isBusy(res.status)) {
+      throw new Error("Gemini が混雑していて答えが返ってきませんでした。少し時間をおいて、もう一度「作戦を立てる」を押してください。");
+    }
     throw new Error(`Gemini の呼び出しに失敗しました (${res.status})\n${text.slice(0, 300)}`);
   }
 
