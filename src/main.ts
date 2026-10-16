@@ -133,7 +133,6 @@ async function onPhoto(file: Blob | null | undefined, isResult: boolean) {
       currentThumb = p.thumb;
       overlay.setAnalysis(null);
       $("photoInfo").hidden = true;
-      $("confTile").hidden = true;
       resultEl.hidden = true;
       pendingHints = { previous: analysis, beforePhoto: before, plays };
       run(pendingHints);
@@ -176,7 +175,6 @@ function resetAll() {
   pendingHints = undefined;
   overlay.setAnalysis(null);
   $("photoInfo").hidden = true;
-  $("confTile").hidden = true;
   preAnalyze.hidden = false;
   resultEl.hidden = true;
   reanalyzeBtn.hidden = true;
@@ -309,7 +307,10 @@ function renderCost(t: { min: number; max: number }) {
   );
   const range = (a: number, b: number) => (a === b ? yen(a) : `${yen(a)}〜${yen(b)}`);
   $("triesNum").textContent = t.min === t.max ? String(t.min) : `${t.min}〜${t.max}`;
-  $("costNum").textContent = range(t.min * price, t.max * price);
+  const cost = range(t.min * price, t.max * price);
+  $("costNum").textContent = cost;
+  // 桁が多いときは小さくして1行に収める
+  $("costNum").style.fontSize = cost.length > 11 ? "20px" : cost.length > 8 ? "24px" : "";
   $("priceLabel").textContent = `1回 ¥${yen(price)}`;
   const spent = $("spent");
   spent.hidden = plays === 0;
@@ -394,8 +395,7 @@ function renderResult() {
   miniTile("clawTile", clawIcon(analysis.clawCount), analysis.clawCount ? `${analysis.clawCount}本爪` : "アーム", analysis.claw);
   $("photoInfo").hidden = false;
   const conf = $("confTile");
-  conf.hidden = false;
-  conf.className = `conf-badge conf-${analysis.confidence}`;
+  conf.className = `tile conf-badge conf-${analysis.confidence}`;
   conf.setAttribute("aria-label", CONF_LABEL[analysis.confidence]);
   $("confLevel").textContent = CONF_WORD[analysis.confidence];
 

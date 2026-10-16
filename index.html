@@ -83,10 +83,6 @@
             <div class="tile mini" id="setupTile"></div>
             <div class="tile mini" id="clawTile"></div>
           </div>
-          <div id="confTile" class="conf-badge" hidden>
-            <div class="meter" aria-hidden="true"><i></i><i></i><i></i></div>
-            <span>自信<b id="confLevel"></b></span>
-          </div>
           <div id="loading" class="loading" hidden>
             <div class="claw-anim" aria-hidden="true"><span></span></div>
             <p id="loadingText">台を観察中…</p>
@@ -105,16 +101,23 @@
             <div class="tile cost-tile">
               <div class="cost-top">
                 <p class="cost-num"><small>¥</small><b id="costNum"></b></p>
-                <button id="priceBtn" class="price-pill" aria-label="1プレイの値段を変える">
-                  <span id="priceLabel"></span>
-                  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>
-                </button>
               </div>
               <div class="coins-row">
                 <div class="coins" id="coins"></div>
                 <p class="tries-num"><b id="triesNum"></b>回</p>
               </div>
-              <p id="spent" class="spent" hidden></p>
+              <div class="cost-foot">
+                <button id="priceBtn" class="price-pill" aria-label="1プレイの値段を変える">
+                  <span id="priceLabel"></span>
+                  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>
+                </button>
+                <p id="spent" class="spent" hidden></p>
+              </div>
+            </div>
+            <div id="confTile" class="tile conf-badge">
+              <div class="meter" aria-hidden="true"><i></i><i></i><i></i></div>
+              <small>自信</small>
+              <b id="confLevel"></b>
             </div>
           </div>
 
