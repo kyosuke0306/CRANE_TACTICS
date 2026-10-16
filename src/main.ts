@@ -2,7 +2,7 @@ import "./style.css";
 import { takePhoto } from "./camera";
 import { analyze, demoAnalysis, DEFAULT_MODEL, PROXY_URL, type AnalyzeInput, type GeminiSettings } from "./gemini";
 import { Overlay } from "./overlay";
-import type { Analysis, PlayLog } from "./types";
+import type { Analysis, LastResult, SetupType } from "./types";
 
 // ---------- DOM ----------
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -16,8 +16,6 @@ const preAnalyze = $("preAnalyze");
 const resultEl = $("result");
 const errorEl = $("error");
 const reanalyzeBtn = $<HTMLButtonElement>("reanalyzeBtn");
-const nextMoveBtn = $<HTMLButtonElement>("nextMoveBtn");
-const fbNote = $<HTMLTextAreaElement>("fbNote");
 const settingsDlg = $<HTMLDialogElement>("settings");
 
 const overlay = new Overlay(canvas);
@@ -27,9 +25,12 @@ const isDemo = new URLSearchParams(location.search).has("demo");
 let photo: { base64: string; mime: string } | null = null;
 let analysis: Analysis | null = null;
 let step = 0;
-let logs: PlayLog[] = [];
-let selectedResult: string | null = null;
-let photoRetaken = false;
+/** 結果の写真を撮った回数（＝プレイした回数） */
+let plays = 0;
+/** 撮った写真の小さな画像（履歴表示用） */
+let history: { thumb: string; result: LastResult }[] = [];
+/** 解析に失敗したとき「作戦を立てる」でやり直すための条件 */
+let pendingHints: AnalyzeInput["hints"] | undefined;
 
 // ---------- 設定（ブラウザ内に保存） ----------
 function loadSettings(): GeminiSettings {
@@ -81,7 +82,7 @@ settingsDlg.addEventListener("close", () => {
 });
 
 // ---------- 写真の読み込み（送る前に縮小して通信量を節約） ----------
-async function readPhoto(file: Blob): Promise<{ base64: string; mime: string; img: HTMLImageElement }> {
+async function readPhoto(file: Blob): Promise<{ base64: string; mime: string; img: HTMLImageElement; thumb: string }> {
   const url = URL.createObjectURL(file);
   try {
     const src = await loadImage(url);
@@ -93,7 +94,12 @@ async function readPhoto(file: Blob): Promise<{ base64: string; mime: string; im
     c.getContext("2d")!.drawImage(src, 0, 0, c.width, c.height);
     const dataUrl = c.toDataURL("image/jpeg", 0.85);
     const img = await loadImage(dataUrl);
-    return { base64: dataUrl.split(",")[1], mime: "image/jpeg", img };
+    const t = document.createElement("canvas");
+    const tr = 160 / Math.max(c.width, c.height);
+    t.width = Math.round(c.width * tr);
+    t.height = Math.round(c.height * tr);
+    t.getContext("2d")!.drawImage(c, 0, 0, t.width, t.height);
+    return { base64: dataUrl.split(",")[1], mime: "image/jpeg", img, thumb: t.toDataURL("image/jpeg", 0.7) };
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -108,22 +114,29 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function onPhoto(file: Blob | null | undefined, keepContext: boolean) {
+let currentThumb = "";
+
+async function onPhoto(file: Blob | null | undefined, isResult: boolean) {
   if (!file) return;
   hideError();
   try {
     const p = await readPhoto(file);
+    const before = photo;
     photo = { base64: p.base64, mime: p.mime };
     startEl.hidden = true;
     boardEl.hidden = false;
     overlay.setImage(p.img);
-    if (keepContext && analysis) {
-      // プレイ後の撮り直し：前回の作戦と結果は覚えたまま、印だけ消す
-      photoRetaken = true;
+    if (isResult && analysis && before) {
+      // プレイ後の写真：前の写真と見比べて、続きの作戦を立てる
+      plays++;
+      history.push({ thumb: currentThumb, result: "first" });
+      currentThumb = p.thumb;
       overlay.setAnalysis(null);
-      nextMoveBtn.disabled = false;
-      nextMoveBtn.textContent = selectedResult ? "次の手を考える" : "この写真で次の手を考える";
+      resultEl.hidden = true;
+      pendingHints = { previous: analysis, beforePhoto: before, plays };
+      run(pendingHints);
     } else {
+      currentThumb = p.thumb;
       resetAll();
     }
   } catch (e) {
@@ -156,14 +169,13 @@ $<HTMLInputElement>("retakeInput").addEventListener("change", (e) => {
 
 function resetAll() {
   analysis = null;
-  logs = [];
-  selectedResult = null;
-  photoRetaken = false;
+  plays = 0;
+  history = [];
+  pendingHints = undefined;
   overlay.setAnalysis(null);
   preAnalyze.hidden = false;
   resultEl.hidden = true;
   reanalyzeBtn.hidden = true;
-  clearFeedback();
 }
 
 function backToStart() {
@@ -196,14 +208,15 @@ async function run(hints?: AnalyzeInput["hints"]) {
 
   try {
     const a = isDemo
-      ? await new Promise<Analysis>((r) => setTimeout(() => r(demoAnalysis()), 900))
+      ? await new Promise<Analysis>((r) => setTimeout(() => r(demoAnalysis(hints?.plays ?? 0)), 900))
       : await analyze({ imageBase64: photo.base64, mimeType: photo.mime, hints }, settings, (msg) => {
           clearInterval(timer);
           loadingText.textContent = msg;
         });
     analysis = a;
     step = 0;
-    photoRetaken = false;
+    pendingHints = undefined;
+    if (history.length) history[history.length - 1].result = a.lastResult;
     overlay.setAnalysis(a);
     renderResult();
     preAnalyze.hidden = true;
@@ -211,6 +224,7 @@ async function run(hints?: AnalyzeInput["hints"]) {
     reanalyzeBtn.hidden = true;
     canvas.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
+    preAnalyze.hidden = false;
     showError((e as Error).message);
   } finally {
     clearInterval(timer);
@@ -218,7 +232,7 @@ async function run(hints?: AnalyzeInput["hints"]) {
   }
 }
 
-$("analyzeBtn").addEventListener("click", () => run());
+$("analyzeBtn").addEventListener("click", () => run(pendingHints));
 
 overlay.onEdit = () => {
   reanalyzeBtn.hidden = false;
@@ -226,7 +240,7 @@ overlay.onEdit = () => {
 
 reanalyzeBtn.addEventListener("click", () => {
   if (!analysis) return;
-  run({ prize: analysis.prize.box, hole: analysis.hole.box, previous: analysis, logs });
+  run({ prize: analysis.prize.box, hole: analysis.hole.box, previous: analysis, plays });
 });
 
 // ---------- 結果の表示 ----------
@@ -243,25 +257,148 @@ function svgEl(markup: string, cls: string): SVGSVGElement {
   return svg;
 }
 
-/** 見込み回数をコインの数で見せる（min までは塗り、max までは枠だけ） */
-function renderTries(t: { min: number; max: number }) {
-  const shown = Math.min(t.max, MAX_COINS);
+// ---------- 1プレイの値段 ----------
+function loadPrice(): number {
+  try {
+    const v = Number(localStorage.getItem("ct.price"));
+    return v > 0 ? v : 100;
+  } catch {
+    return 100;
+  }
+}
+let price = loadPrice();
+const yen = (n: number) => n.toLocaleString("ja-JP");
+
+const priceDlg = $<HTMLDialogElement>("priceDlg");
+const priceInput = $<HTMLInputElement>("priceInput");
+$("priceBtn").addEventListener("click", () => {
+  priceInput.value = String(price);
+  priceDlg.showModal();
+});
+priceDlg.querySelectorAll<HTMLButtonElement>("[data-price]").forEach((b) =>
+  b.addEventListener("click", () => {
+    priceInput.value = b.dataset.price!;
+    priceDlg.close("save");
+  }),
+);
+priceDlg.addEventListener("close", () => {
+  const v = Math.round(Number(priceInput.value));
+  if (priceDlg.returnValue !== "save" || !(v > 0)) return;
+  price = v;
+  try {
+    localStorage.setItem("ct.price", String(v));
+  } catch {
+    /* 保存できなくても今回は使う */
+  }
+  if (analysis) renderCost(analysis.tries);
+});
+
+/** 見込み回数をコインで、かかりそうな金額を数字で見せる */
+function renderCost(t: { min: number; max: number }) {
+  const shown = Math.min(plays + t.max, MAX_COINS);
+  const coin = '<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/>';
   $("coins").replaceChildren(
     ...Array.from({ length: shown }, (_, i) =>
-      svgEl('<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/>', i < t.min ? "coin" : "coin maybe"),
+      svgEl(coin, i < plays ? "coin used" : i < plays + t.min ? "coin" : "coin maybe"),
     ),
   );
+  const range = (a: number, b: number) => (a === b ? yen(a) : `${yen(a)}〜${yen(b)}`);
   $("triesNum").textContent = t.min === t.max ? String(t.min) : `${t.min}〜${t.max}`;
+  $("costNum").textContent = range(t.min * price, t.max * price);
+  $("priceLabel").textContent = `1回 ¥${yen(price)}`;
+  const spent = $("spent");
+  spent.hidden = plays === 0;
+  spent.textContent = `使った ¥${yen(plays * price)}（${plays}回）`;
+}
+
+// ---------- 台の種類・アーム（絵で見せる） ----------
+const SETUP_INFO: Record<SetupType, { label: string; icon: string }> = {
+  stones: {
+    label: "石の上",
+    icon: '<rect x="6" y="5" width="12" height="9" rx="1"/><circle cx="5" cy="18" r="2"/><circle cx="10" cy="18.5" r="2"/><circle cx="15" cy="18" r="2"/><circle cx="20" cy="18.5" r="1.8"/>',
+  },
+  bridge: {
+    label: "橋渡し",
+    icon: '<rect x="5" y="6" width="14" height="8" rx="1"/><circle cx="7" cy="17" r="2.2"/><circle cx="17" cy="17" r="2.2"/><path d="M12 15v6m-2-2 2 2 2-2"/>',
+  },
+  flat: {
+    label: "平置き",
+    icon: '<rect x="4" y="8" width="11" height="9" rx="1"/><path d="M2 17h15M17 17v4M17 13h5"/>',
+  },
+  hook: {
+    label: "フック",
+    icon: '<path d="M4 5h16M12 5v5"/><path d="M12 10a4 4 0 1 0 4 4"/><rect x="8" y="17" width="8" height="4" rx="1"/>',
+  },
+  pusher: {
+    label: "押し出し",
+    icon: '<path d="M3 11h12v10M15 21h6"/><rect x="6" y="6" width="6" height="5" rx="1"/><path d="M14 8h5m-2-2 2 2-2 2"/>',
+  },
+  other: {
+    label: "その他",
+    icon: '<rect x="5" y="8" width="14" height="11" rx="1.5"/><path d="M9.5 4.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.4"/>',
+  },
+};
+
+function clawIcon(n: number): string {
+  const head = '<path d="M12 2v4"/><rect x="8" y="6" width="8" height="4" rx="1.5"/>';
+  if (n === 2) return head + '<path d="M9 10c-4 2-4 7-1 10l2-1M15 10c4 2 4 7 1 10l-2-1"/>';
+  if (n >= 3) return head + '<path d="M9 10c-4 2-4 7-1 10l2-1M15 10c4 2 4 7 1 10l-2-1M12 10v9"/>';
+  return head + '<path d="M10.5 14a1.8 1.8 0 1 1 2.2 1.7c-.5.2-.7.5-.7 1M12 19.5v.5"/>';
+}
+
+function miniTile(id: string, icon: string, label: string, title: string) {
+  const tile = $(id);
+  tile.replaceChildren(svgEl(icon, "mini-ico"), Object.assign(document.createElement("small"), { textContent: label }));
+  tile.title = title;
+}
+
+// ---------- 前回からの変化・履歴 ----------
+const RESULT_INFO: Record<Exclude<LastResult, "first">, { label: string; cls: string; icon: string }> = {
+  moved_well: { label: "前進！", cls: "good", icon: '<path d="M5 12h14m-5-5 5 5-5 5"/>' },
+  moved_little: { label: "少し前進", cls: "little", icon: '<path d="M8 12h8m-3-3 3 3-3 3"/>' },
+  no_move: { label: "動かず", cls: "none", icon: '<path d="M6 12h12"/>' },
+  wrong_way: { label: "逆方向", cls: "wrong", icon: '<path d="M19 12H5m5-5-5 5 5 5"/>' },
+};
+
+function renderHistory() {
+  const box = $("history");
+  box.hidden = history.length === 0;
+  const items = [...history.map((h) => h.thumb), currentThumb];
+  box.replaceChildren(
+    ...items.map((src, i) => {
+      const fig = document.createElement("figure");
+      fig.className = i === items.length - 1 ? "now" : "";
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = "";
+      const cap = document.createElement("figcaption");
+      cap.textContent = i === items.length - 1 ? "今" : String(i + 1);
+      fig.append(img, cap);
+      const r = i > 0 ? history[i - 1]?.result : undefined;
+      if (r && r !== "first") fig.classList.add(RESULT_INFO[r].cls);
+      return fig;
+    }),
+  );
 }
 
 function renderResult() {
   if (!analysis) return;
-  $("setupChip").textContent = analysis.setup;
-  $("clawChip").textContent = analysis.claw;
-  renderTries(analysis.tries);
+  renderCost(analysis.tries);
+  const setup = SETUP_INFO[analysis.setupType];
+  miniTile("setupTile", setup.icon, setup.label, analysis.setup);
+  miniTile("clawTile", clawIcon(analysis.clawCount), analysis.clawCount ? `${analysis.clawCount}本爪` : "アーム", analysis.claw);
   const conf = $("confTile");
-  conf.className = `tile conf-tile conf-${analysis.confidence}`;
+  conf.className = `tile mini conf-tile conf-${analysis.confidence}`;
   conf.setAttribute("aria-label", CONF_LABEL[analysis.confidence]);
+
+  const last = $("lastResult");
+  const info = analysis.lastResult === "first" ? null : RESULT_INFO[analysis.lastResult];
+  last.hidden = !info;
+  if (info) {
+    last.className = `last-result ${info.cls}`;
+    last.replaceChildren(svgEl(info.icon, "ico"), Object.assign(document.createElement("span"), { textContent: info.label }));
+  }
+  renderHistory();
 
   const list = $("cautionList");
   list.replaceChildren(
@@ -333,48 +470,11 @@ canvas.addEventListener("pointerup", (e) => {
 });
 
 // ---------- プレイ結果 ----------
-document.querySelectorAll<HTMLButtonElement>(".fb-buttons .btn-chip").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const result = btn.dataset.result!;
-    if (result === "取れた") {
-      $("win").hidden = false;
-      return;
-    }
-    selectedResult = result;
-    document.querySelectorAll(".fb-buttons .btn-chip").forEach((b) => b.classList.toggle("selected", b === btn));
-    nextMoveBtn.disabled = false;
-    nextMoveBtn.textContent = "次の手を考える";
-  });
+$("winBtn").addEventListener("click", () => {
+  const n = plays + 1;
+  $("winSpent").textContent = `${n}回・¥${yen(n * price)}でゲット！`;
+  $("win").hidden = false;
 });
-
-nextMoveBtn.addEventListener("click", () => {
-  if (!analysis) return;
-  const note = fbNote.value.trim();
-  const stepIndex = Math.min(step, Math.max(0, analysis.steps.length - 1));
-  if (selectedResult) logs.push({ stepIndex, result: note ? `${selectedResult}（${note}）` : selectedResult });
-  const previous = analysis;
-  const hints: AnalyzeInput["hints"] = {
-    previous,
-    logs,
-    note: photoRetaken
-      ? "写真はプレイ後に撮り直したものです。今の写真から位置を読み取ってください。"
-      : "写真はプレイ前のものです。結果から景品の今の位置を推測してください。",
-  };
-  if (!photoRetaken) {
-    hints.prize = previous.prize.box;
-    hints.hole = previous.hole.box;
-  }
-  clearFeedback();
-  run(hints);
-});
-
-function clearFeedback() {
-  selectedResult = null;
-  fbNote.value = "";
-  nextMoveBtn.disabled = true;
-  nextMoveBtn.textContent = "次の手を考える";
-  document.querySelectorAll(".fb-buttons .btn-chip").forEach((b) => b.classList.remove("selected"));
-}
 
 $("winClose").addEventListener("click", () => {
   $("win").hidden = true;

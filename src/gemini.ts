@@ -1,5 +1,5 @@
 import { RESPONSE_SCHEMA, SYSTEM_PROMPT } from "./tactics";
-import type { Analysis, Arrow, Box, PlayLog, Point, Pose } from "./types";
+import type { Analysis, Arrow, Box, LastResult, Point, Pose, SetupType } from "./types";
 
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 // 通常版（gemini-flash-latest）はいつも混雑しているので、軽い版を標準にする
@@ -16,32 +16,35 @@ export interface GeminiSettings {
 export interface AnalyzeInput {
   imageBase64: string;
   mimeType: string;
-  /** ユーザーが直した位置や、プレイ結果など */
+  /** ユーザーが直した位置や、プレイ前の写真など */
   hints?: {
     prize?: Box;
     hole?: Box;
     previous?: Analysis;
-    logs?: PlayLog[];
-    note?: string;
+    /** プレイ前の写真（結果の写真と見比べる） */
+    beforePhoto?: { base64: string; mime: string };
+    /** これまでのプレイ回数 */
+    plays?: number;
   };
 }
 
 function buildUserText(input: AnalyzeInput): string {
   const h = input.hints;
   if (!h) return "この台の攻略手順を考えてください。";
-  const lines = ["この台の攻略手順を考え直してください。"];
+  const lines: string[] = [];
+  if (h.beforePhoto) {
+    lines.push("1枚目がプレイ前、2枚目がプレイした後の今の台です。");
+    lines.push("景品がどう動いたかを見比べて、今の位置から続きの作戦を立ててください。");
+  } else {
+    lines.push("この台の攻略手順を考え直してください。");
+  }
   if (h.prize) lines.push(`景品の正しい位置（ユーザーが修正）: ${JSON.stringify(h.prize)}`);
   if (h.hole) lines.push(`落とし口の正しい位置（ユーザーが修正）: ${JSON.stringify(h.hole)}`);
   if (h.previous) {
     lines.push("前回の提案:");
     h.previous.steps.forEach((s, i) => lines.push(`  ${i + 1}. ${s.title}: ${s.text}`));
   }
-  if (h.logs?.length) {
-    lines.push("実際にプレイした結果:");
-    h.logs.forEach((l) => lines.push(`  手順${l.stepIndex + 1}を試した → ${l.result}`));
-    lines.push("この結果を踏まえて、景品の今の位置から次の手を出してください。");
-  }
-  if (h.note) lines.push(`ユーザーからのメモ: ${h.note}`);
+  if (h.plays) lines.push(`ここまで ${h.plays} 回プレイしました。`);
   return lines.join("\n");
 }
 
@@ -52,6 +55,9 @@ function buildRequestBody(input: AnalyzeInput) {
       {
         role: "user",
         parts: [
+          ...(input.hints?.beforePhoto
+            ? [{ inlineData: { mimeType: input.hints.beforePhoto.mime, data: input.hints.beforePhoto.base64 } }]
+            : []),
           { inlineData: { mimeType: input.mimeType, data: input.imageBase64 } },
           { text: buildUserText(input) },
         ],
@@ -162,6 +168,9 @@ function toTries(v: unknown): { min: number; max: number } {
   return { min, max };
 }
 
+const SETUP_TYPES: SetupType[] = ["stones", "bridge", "flat", "hook", "pusher", "other"];
+const LAST_RESULTS: LastResult[] = ["first", "moved_well", "moved_little", "no_move", "wrong_way"];
+
 const ARROWS: Arrow[] = ["left", "right", "up", "down", "rotate_cw", "rotate_ccw", "none"];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,7 +180,10 @@ export function normalize(a: any): Analysis {
   const holeBox = toBox(a?.hole?.box, [700, 700, 950, 950]);
   return {
     setup: String(a?.setup ?? "不明"),
+    setupType: SETUP_TYPES.includes(a?.setupType) ? a.setupType : "other",
     claw: String(a?.claw ?? "不明"),
+    clawCount: [2, 3, 4].includes(Number(a?.clawCount)) ? Number(a.clawCount) : 0,
+    lastResult: LAST_RESULTS.includes(a?.lastResult) ? a.lastResult : "first",
     prize: { label: String(a?.prize?.label ?? "景品"), box: prizeBox },
     hole: { box: holeBox },
     obstacles: Array.isArray(a?.obstacles)
@@ -199,11 +211,15 @@ export function normalize(a: any): Analysis {
   };
 }
 
-/** ?demo=1 のときに使うサンプル（APIを呼ばずに画面を確認できる） */
-export function demoAnalysis(): Analysis {
+/** ?demo=1 のときに使うサンプル（APIを呼ばずに画面を確認できる）。round は結果の写真を撮った回数 */
+export function demoAnalysis(round = 0): Analysis {
+  if (round > 0) return demoNext(round);
   return normalize({
     setup: "石（アクリルダイヤ）の上に置かれた箱",
+    setupType: "stones",
     claw: "3本爪",
+    clawCount: 3,
+    lastResult: "first",
     prize: { label: "手前の箱", box: [620, 140, 880, 390] },
     hole: { box: [640, 560, 840, 760] },
     obstacles: [{ label: "白いバー", box: [530, 80, 570, 900] }],
@@ -236,6 +252,40 @@ export function demoAnalysis(): Analysis {
       "写真だけではアームの強さは分かりません。1回目の動き方を見て続けるか決めましょう。",
       "1人各1個までの制限があります。",
     ],
+    confidence: "medium",
+  });
+}
+
+function demoNext(round: number): Analysis {
+  const shift = Math.min(round, 3) * 50;
+  return normalize({
+    setup: "石（アクリルダイヤ）の上に置かれた箱",
+    setupType: "stones",
+    claw: "3本爪",
+    clawCount: 3,
+    lastResult: round === 1 ? "moved_little" : "moved_well",
+    prize: { label: "手前の箱", box: [620, 140 + shift, 880, 390 + shift] },
+    hole: { box: [640, 560, 840, 760] },
+    obstacles: [{ label: "白いバー", box: [530, 80, 570, 900] }],
+    steps: [
+      {
+        title: "もう一度左端を押す",
+        text: "少し右に動きました。同じように左端を押して、穴に近づけます。",
+        target: [740, 170 + shift],
+        arrow: "right",
+        after: { box: [630, 300 + shift, 870, 550 + shift], angle: 15 },
+      },
+      {
+        title: "最後のひと押し",
+        text: "穴にかかったら、左側の端を上から押さえて傾けます。",
+        target: [760, 420],
+        arrow: "none",
+        after: { box: [650, 460, 860, 690], angle: 40 },
+      },
+    ],
+    tries: { min: Math.max(1, 3 - round), max: Math.max(2, 5 - round) },
+    goal: { box: [680, 560, 860, 740], angle: 70, text: "角から穴に傾いて落ちる" },
+    cautions: ["写真だけではアームの強さは分かりません。"],
     confidence: "medium",
   });
 }

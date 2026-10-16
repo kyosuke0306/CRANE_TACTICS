@@ -108,10 +108,6 @@ main {
   color: var(--text);
   border: 1px solid var(--line);
 }
-.btn-chip.selected {
-  background: var(--pink);
-  border-color: var(--pink);
-}
 .wide {
   width: 100%;
 }
@@ -279,27 +275,12 @@ canvas {
   }
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 14px 0 10px;
-}
-.chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  font-size: 12px;
-  color: var(--muted);
-}
 
 /* ---- 見込み回数・自信 ---- */
 .summary {
   display: grid;
-  grid-template-columns: 1fr auto;
   gap: 8px;
-  margin-top: 14px;
+  margin: 14px 0;
 }
 .tile {
   background: var(--panel);
@@ -307,9 +288,55 @@ canvas {
   border-radius: var(--radius);
   padding: 12px 14px;
 }
-.tries-tile {
+.cost-tile {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+.cost-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cost-num {
+  margin: 0;
+  font-family: "Dela Gothic One", sans-serif;
+  line-height: 1;
+  color: var(--yellow);
+  white-space: nowrap;
+}
+.cost-num small {
+  font-size: 18px;
+  margin-right: 2px;
+}
+.cost-num b {
+  font-weight: 400;
+  font-size: 30px;
+}
+.price-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.price-pill .ico {
+  width: 13px;
+  height: 13px;
+}
+.coins-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 .coins {
@@ -324,6 +351,11 @@ canvas {
   stroke: #b8901a;
   stroke-width: 2;
 }
+.coin.used {
+  fill: var(--muted);
+  stroke: #6b6380;
+  opacity: 0.6;
+}
 .coin.maybe {
   fill: none;
   stroke: var(--yellow);
@@ -333,38 +365,53 @@ canvas {
 .tries-num {
   margin: 0;
   white-space: nowrap;
-  font-family: "Dela Gothic One", sans-serif;
-  line-height: 1;
-}
-.tries-num b {
-  font-weight: 400;
-  font-size: 30px;
-  color: var(--yellow);
-}
-.tries-num small {
-  margin-left: 3px;
-  font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
+  font-size: 13px;
   font-weight: 700;
-  font-size: 14px;
   color: var(--muted);
 }
-.conf-tile {
+.tries-num b {
+  margin-right: 1px;
+  font-size: 17px;
+  color: var(--text);
+}
+.spent {
+  margin: -4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.info-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.tile.mini {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 64px;
+  padding: 10px 6px;
 }
-.conf-tile small {
-  font-size: 11px;
+.tile.mini small {
+  font-size: 12px;
+  font-weight: 700;
   color: var(--muted);
+}
+.mini-ico {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .meter {
   display: flex;
   align-items: flex-end;
   gap: 3px;
-  height: 22px;
+  height: 30px;
+  padding: 2px 0;
 }
 .meter i {
   width: 7px;
@@ -451,23 +498,7 @@ canvas {
   margin: 10px 2px;
 }
 
-.feedback {
-  margin-top: 22px;
-  padding: 16px;
-  border-radius: var(--radius);
-  background: var(--panel);
-  border: 1px dashed var(--line);
-}
-.feedback h3 {
-  margin: 0 0 10px;
-  font-size: 15px;
-}
-.fb-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-textarea,
+input[type="number"],
 input[type="text"],
 input[type="password"] {
   width: 100%;
@@ -480,10 +511,110 @@ input[type="password"] {
   font: inherit;
   font-size: 16px; /* iOS のズーム防止 */
 }
-.fb-hint {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 10px 2px 0;
+/* ---- 結果を撮る ---- */
+.play-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 18px;
+}
+.play-actions .btn-primary {
+  min-height: 56px;
+  font-size: 16px;
+}
+.btn-win {
+  min-height: 56px;
+  padding: 0 20px;
+  background: var(--green);
+  color: #0c2a1e;
+  box-shadow: 0 4px 0 #1a9a68;
+  font-family: "Dela Gothic One", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+.btn-win:active {
+  box-shadow: 0 1px 0 #1a9a68;
+  transform: translateY(3px);
+}
+.history {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.history figure {
+  position: relative;
+  flex: none;
+  margin: 0;
+}
+.history img {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 2px solid var(--line);
+  opacity: 0.75;
+}
+.history figure.now img {
+  border-color: var(--yellow);
+  opacity: 1;
+}
+.history figure.good img { border-color: var(--green); }
+.history figure.little img { border-color: var(--yellow); }
+.history figure.wrong img,
+.history figure.none img { border-color: var(--pink); }
+.history figcaption {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  font-size: 10px;
+  font-weight: 900;
+}
+.last-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 14px;
+}
+.last-result .ico {
+  width: 18px;
+  height: 18px;
+  stroke-width: 3;
+}
+.last-result.good { background: rgba(46, 229, 157, 0.15); color: var(--green); }
+.last-result.little { background: rgba(255, 210, 63, 0.15); color: var(--yellow); }
+.last-result.none,
+.last-result.wrong { background: rgba(255, 77, 109, 0.15); color: #ff8fa3; }
+
+/* ---- 値段 ---- */
+.price-form h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+.price-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.price-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 18px;
+  font-weight: 900;
+  font-size: 18px;
+}
+.price-input input {
+  margin-top: 0;
 }
 
 .cautions {

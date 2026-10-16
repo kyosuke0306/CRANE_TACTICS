@@ -28,9 +28,17 @@ export interface Pose {
   angle: number;
 }
 
+export type SetupType = "stones" | "bridge" | "flat" | "hook" | "pusher" | "other";
+export type LastResult = "first" | "moved_well" | "moved_little" | "no_move" | "wrong_way";
+
 export interface Analysis {
   setup: string;
+  setupType: SetupType;
   claw: string;
+  /** アームの爪の数（分からなければ 0） */
+  clawCount: number;
+  /** 前回のプレイで景品がどう動いたか（最初の作戦では first） */
+  lastResult: LastResult;
   prize: { label: string; box: Box };
   hole: { box: Box };
   obstacles: { label: string; box: Box }[];
@@ -41,9 +49,4 @@ export interface Analysis {
   goal: Pose & { text: string };
   cautions: string[];
   confidence: "low" | "medium" | "high";
-}
-
-export interface PlayLog {
-  stepIndex: number;
-  result: string;
 }

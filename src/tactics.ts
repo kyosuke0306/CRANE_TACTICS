@@ -48,6 +48,12 @@ export const SYSTEM_PROMPT = `
 - 各手順の after は「その手がうまくいったあとの景品」。box はそのときの景品の範囲、angle は写真上で時計回りに何度回っているか（今の向きが 0）。
 - goal は「取れる瞬間の景品」。落とし口に落ちかけている位置・向きを box と angle で表し、text に形を一言で（例: 縦になって棒の間から落ちる）。
 
+結果の写真が2枚あるとき:
+- 1枚目はプレイ前、2枚目はプレイ後の今の台。景品がどう動いたかを見比べて lastResult に入れる。
+- 座標・手順はすべて2枚目（今の写真）に対して出す。前回の作戦を引き継ぎ、続きの手を考える。
+- tries は「今から」取れるまでの残りの回数にする。
+- 写真が1枚だけのときは lastResult を first にする。
+
 見込み回数:
 - tries は「この手順で取れるまでに必要なプレイ回数」の見込みを min〜max で。
 - 1手が1回で決まるとは限らない。石の上・橋渡しなど1回で少ししか動かない設定や、アームが弱そうなときは多めに見積もる。
@@ -74,7 +80,18 @@ export const RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
     setup: { type: "STRING", description: "台の設定の種類（例: 石の上の箱、橋渡し、ちゃぶ台）" },
+    setupType: {
+      type: "STRING",
+      enum: ["stones", "bridge", "flat", "hook", "pusher", "other"],
+      description: "stones=石やボールの上, bridge=2本の棒の上(橋渡し), flat=平らな台, hook=フック・リング, pusher=押し出し・段差, other=その他",
+    },
     claw: { type: "STRING", description: "アームの種類（例: 3本爪、2本爪）" },
+    clawCount: { type: "INTEGER", description: "爪の数。分からなければ0" },
+    lastResult: {
+      type: "STRING",
+      enum: ["first", "moved_well", "moved_little", "no_move", "wrong_way"],
+      description: "前回のプレイで景品がどう動いたか。写真が1枚なら first",
+    },
     prize: {
       type: "OBJECT",
       properties: {
@@ -129,5 +146,5 @@ export const RESPONSE_SCHEMA = {
     cautions: { type: "ARRAY", items: { type: "STRING" } },
     confidence: { type: "STRING", enum: ["low", "medium", "high"] },
   },
-  required: ["setup", "claw", "prize", "hole", "obstacles", "steps", "tries", "goal", "cautions", "confidence"],
+  required: ["setup", "setupType", "claw", "clawCount", "lastResult", "prize", "hole", "obstacles", "steps", "tries", "goal", "cautions", "confidence"],
 };

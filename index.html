@@ -91,19 +91,31 @@
         </div>
 
         <div id="result" hidden>
+          <div id="lastResult" class="last-result" hidden></div>
+
           <div class="summary">
-            <div class="tile tries-tile" aria-label="取れるまでの見込み回数">
-              <p class="tries-num"><b id="triesNum"></b><small>回</small></p>
-              <div class="coins" id="coins"></div>
+            <div class="tile cost-tile">
+              <div class="cost-top">
+                <p class="cost-num"><small>¥</small><b id="costNum"></b></p>
+                <button id="priceBtn" class="price-pill" aria-label="1プレイの値段を変える">
+                  <span id="priceLabel"></span>
+                  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>
+                </button>
+              </div>
+              <div class="coins-row">
+                <div class="coins" id="coins"></div>
+                <p class="tries-num"><b id="triesNum"></b>回</p>
+              </div>
+              <p id="spent" class="spent" hidden></p>
             </div>
-            <div class="tile conf-tile" id="confTile">
-              <div class="meter" aria-hidden="true"><i></i><i></i><i></i></div>
-              <small>自信</small>
+            <div class="info-row">
+              <div class="tile mini" id="setupTile"></div>
+              <div class="tile mini" id="clawTile"></div>
+              <div class="tile mini conf-tile" id="confTile">
+                <div class="meter" aria-hidden="true"><i></i><i></i><i></i></div>
+                <small>自信</small>
+              </div>
             </div>
-          </div>
-          <div class="chips">
-            <span class="chip" id="setupChip"></span>
-            <span class="chip" id="clawChip"></span>
           </div>
 
           <div class="step-card" id="stepCard">
@@ -119,26 +131,18 @@
           <p class="edit-hint">印がずれていたら、指でドラッグして直せます。</p>
           <button id="reanalyzeBtn" class="btn btn-ghost wide" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>直した位置で作戦を立て直す</button>
 
-          <div class="feedback">
-            <h3>やってみた結果は？</h3>
-            <div class="fb-buttons">
-              <button class="btn btn-chip" data-result="取れた"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8 20h8M9.5 17h5"/></svg>取れた</button>
-              <button class="btn btn-chip" data-result="狙いどおりに動いた">動いた</button>
-              <button class="btn btn-chip" data-result="少しだけ動いた">少し動いた</button>
-              <button class="btn btn-chip" data-result="ほとんど動かなかった">動かない</button>
-              <button class="btn btn-chip" data-result="思っていない方向に動いた">変な方向へ</button>
-            </div>
-            <textarea id="fbNote" rows="2" placeholder="気づいたこと（任意）例: アームが弱くて箱に触れただけ"></textarea>
-            <div class="row">
-              <button id="retakeBtn" class="btn btn-ghost">
-                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
-                今の台を撮る
-              </button>
-              <input id="retakeInput" type="file" accept="image/*" capture="environment" hidden />
-              <button id="nextMoveBtn" class="btn btn-primary" disabled>次の手を考える</button>
-            </div>
-            <p class="fb-hint">景品が動いたら、今の台を撮り直すと次の手が正確になります。</p>
+          <div class="play-actions">
+            <button id="retakeBtn" class="btn btn-primary">
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
+              結果を撮って更新
+            </button>
+            <button id="winBtn" class="btn btn-win" aria-label="取れた">
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M8 20h8M9.5 17h5"/></svg>
+              GET
+            </button>
+            <input id="retakeInput" type="file" accept="image/*" capture="environment" hidden />
           </div>
+          <div id="history" class="history" hidden></div>
 
           <details class="cautions">
             <summary>注意点</summary>
@@ -154,7 +158,7 @@
       <div id="win" class="win" hidden>
         <div class="win-card">
           <p class="win-big">GET!</p>
-          <p>おめでとう！</p>
+          <p id="winSpent">おめでとう！</p>
           <button id="winClose" class="btn btn-primary">別の台へ</button>
         </div>
       </div>
@@ -177,6 +181,26 @@
           <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v6"/><rect x="8" y="9" width="8" height="4" rx="1.5"/><path d="M9.5 13c-3 1.5-4 5-2 8M14.5 13c3 1.5 4 5 2 8"/></svg><span>アームも写すと精度が上がる</span></li>
         </ul>
         <button class="btn btn-primary wide">OK</button>
+      </form>
+    </dialog>
+
+    <dialog id="priceDlg">
+      <form method="dialog" class="price-form">
+        <h2>1プレイの値段</h2>
+        <div class="price-presets">
+          <button type="button" class="btn btn-chip" data-price="100">¥100</button>
+          <button type="button" class="btn btn-chip" data-price="200">¥200</button>
+          <button type="button" class="btn btn-chip" data-price="300">¥300</button>
+          <button type="button" class="btn btn-chip" data-price="500">¥500</button>
+        </div>
+        <label class="price-input">
+          <span>¥</span>
+          <input id="priceInput" type="number" inputmode="numeric" min="10" step="10" />
+        </label>
+        <div class="row end">
+          <button value="cancel" class="btn btn-ghost">閉じる</button>
+          <button value="save" class="btn btn-primary">決定</button>
+        </div>
       </form>
     </dialog>
 
