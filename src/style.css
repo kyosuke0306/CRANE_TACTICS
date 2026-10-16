@@ -177,8 +177,37 @@ main {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 36px;
   min-height: calc(100dvh - 90px - env(safe-area-inset-top));
-  padding-bottom: 40px;
+  padding-bottom: 32px;
+}
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.hero-art {
+  width: min(78%, 320px);
+  height: auto;
+}
+.hero-title {
+  width: min(70%, 280px);
+  height: auto;
+}
+.hero-claw {
+  animation: claw-bob 2.6s ease-in-out infinite;
+}
+@keyframes claw-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-claw { animation: none; }
+}
+/* トップ画面では大きいタイトルがあるので、ヘッダーの小さいロゴは隠す */
+body:has(#start:not([hidden])) .top .logo {
+  visibility: hidden;
 }
 .start-actions {
   display: flex;
