@@ -2,7 +2,8 @@ import { RESPONSE_SCHEMA, SYSTEM_PROMPT } from "./tactics";
 import type { Analysis, Arrow, Box, PlayLog, Point } from "./types";
 
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-export const DEFAULT_MODEL = "gemini-flash-latest";
+// 通常版（gemini-flash-latest）はいつも混雑しているので、軽い版を標準にする
+export const DEFAULT_MODEL = "gemini-flash-lite-latest";
 
 /** ビルド時に VITE_PROXY_URL を設定すると、APIキーを持たない中継サーバー経由で呼ぶ */
 export const PROXY_URL: string = import.meta.env.VITE_PROXY_URL ?? "";
@@ -64,8 +65,9 @@ function buildRequestBody(input: AnalyzeInput) {
   };
 }
 
-// 混雑（503）や一時的なエラーのときに使う軽いモデル
-const FALLBACK_MODEL = "gemini-flash-lite-latest";
+// 混雑（503）や一時的なエラーが続いたときに切り替える別のモデル
+const otherModel = (model: string) =>
+  model === "gemini-flash-lite-latest" ? "gemini-flash-latest" : "gemini-flash-lite-latest";
 const RETRY_WAITS = [2000, 5000];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -102,9 +104,9 @@ export async function analyze(
     await sleep(wait);
     res = await call(model);
   }
-  if (isBusy(res.status) && model !== FALLBACK_MODEL) {
-    onRetry?.("混雑しているので、軽いモデルで試しています…");
-    res = await call(FALLBACK_MODEL);
+  if (isBusy(res.status)) {
+    onRetry?.("混雑しているので、別のモデルで試しています…");
+    res = await call(otherModel(model));
   }
 
   if (!res.ok) {

@@ -4,7 +4,7 @@ compatibility_date = "2026-10-01"
 
 [vars]
 ALLOWED_ORIGINS = "https://kyosuke0306.github.io,http://localhost:5173"
-ALLOWED_MODELS = "gemini-flash-latest,gemini-flash-lite-latest"
+ALLOWED_MODELS = "gemini-flash-lite-latest,gemini-flash-latest"
 
 # APIキーはここに書かず、次のコマンドで登録する:
 #   npx wrangler secret put GEMINI_API_KEY

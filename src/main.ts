@@ -34,6 +34,11 @@ let photoRetaken = false;
 // ---------- 設定（ブラウザ内に保存） ----------
 function loadSettings(): GeminiSettings {
   try {
+    // 以前の標準モデルが保存されていたら、新しい標準（軽い版）に置き換える
+    if (localStorage.getItem("ct.model") === "gemini-flash-latest" && !localStorage.getItem("ct.modelMigrated")) {
+      localStorage.removeItem("ct.model");
+    }
+    localStorage.setItem("ct.modelMigrated", "1");
     return {
       apiKey: localStorage.getItem("ct.apiKey") ?? "",
       model: localStorage.getItem("ct.model") ?? DEFAULT_MODEL,
