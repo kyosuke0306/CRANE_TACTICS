@@ -125,13 +125,11 @@ async function onPhoto(file: File | undefined, keepContext: boolean) {
   }
 }
 
-for (const id of ["cameraInput", "fileInput"]) {
-  $<HTMLInputElement>(id).addEventListener("change", (e) => {
-    const input = e.target as HTMLInputElement;
-    onPhoto(input.files?.[0], false);
-    input.value = "";
-  });
-}
+$<HTMLInputElement>("cameraInput").addEventListener("change", (e) => {
+  const input = e.target as HTMLInputElement;
+  onPhoto(input.files?.[0], false);
+  input.value = "";
+});
 $<HTMLInputElement>("retakeInput").addEventListener("change", (e) => {
   const input = e.target as HTMLInputElement;
   onPhoto(input.files?.[0], true);
