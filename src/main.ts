@@ -491,10 +491,10 @@ function renderStep() {
   const nowTag = $("nowTag");
   nowTag.hidden = isGoal;
   nowTag.className = step === 0 ? "now-tag now" : "now-tag later";
-  nowTag.setAttribute("aria-label", step === 0 ? "今やる手" : "あとでやる手（押すと今の手へ戻る）");
+  nowTag.setAttribute("aria-label", step === 0 ? "今やる手" : "あとでやる手（押すと今やる手へ戻る）");
   nowTag.replaceChildren(
     svgEl(step === 0 ? '<path d="M8 5l11 7-11 7z"/>' : '<path d="M15 6l-6 6 6 6"/>', "ico"),
-    step === 0 ? "今やる" : "あとでやる",
+    step === 0 ? "NOW" : "LATER",
   );
   if (isGoal) {
     $("stepTitle").textContent = "GET!";

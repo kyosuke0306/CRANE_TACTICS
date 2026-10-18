@@ -520,14 +520,20 @@ canvas {
   color: #fff;
 }
 .step-dots button.now::after {
-  content: "今";
+  content: "NOW";
   position: absolute;
   left: 50%;
   top: calc(100% + 3px);
   transform: translateX(-50%);
-  font-size: 10px;
-  font-weight: 900;
+  font-family: "Dela Gothic One", sans-serif;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
   color: var(--pink);
+}
+/* 今の手を見ているときは下の札に NOW が出るので、丸の下は出さない */
+.step-dots button.now.active::after {
+  content: none;
 }
 @keyframes now-pulse {
   0% { box-shadow: 0 0 0 0 rgba(255, 77, 109, 0.6); }
@@ -540,13 +546,15 @@ canvas {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-top: 16px;
+  margin-top: 18px;
   padding: 4px 12px 4px 8px;
   border-radius: 999px;
   border: 0;
-  font: inherit;
+  font-family: "Dela Gothic One", sans-serif;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
 }
 .now-tag .ico {
   width: 14px;
