@@ -3,6 +3,7 @@ import { takePhoto } from "./camera";
 import { analyze, demoAnalysis, DEFAULT_MODEL, PROXY_URL, type AnalyzeInput, type GeminiSettings } from "./gemini";
 import { StepDiagram, techniqueOf } from "./diagram";
 import { Overlay } from "./overlay";
+import { deleteRecord, loadRecords, newId, pastNotes, saveRecord, type Outcome, type PlayRecord } from "./records";
 import type { Analysis, LastResult, SetupType } from "./types";
 
 // ---------- DOM ----------
@@ -32,6 +33,8 @@ let step = 0;
 let plays = 0;
 /** 撮った写真の小さな画像（履歴表示用） */
 let history: { thumb: string; result: LastResult }[] = [];
+/** 今プレイしている台の記録（最初の作戦が立った時点で作る） */
+let record: PlayRecord | null = null;
 /** 解析に失敗したとき「作戦を立てる」でやり直すための条件 */
 let pendingHints: AnalyzeInput["hints"] | undefined;
 
@@ -173,6 +176,7 @@ $<HTMLInputElement>("retakeInput").addEventListener("change", (e) => {
 
 function resetAll() {
   analysis = null;
+  record = null;
   plays = 0;
   history = [];
   pendingHints = undefined;
@@ -214,7 +218,7 @@ async function run(hints?: AnalyzeInput["hints"]) {
   try {
     const a = isDemo
       ? await new Promise<Analysis>((r) => setTimeout(() => r(demoAnalysis(hints?.plays ?? 0)), 900))
-      : await analyze({ imageBase64: photo.base64, mimeType: photo.mime, hints }, settings, (msg) => {
+      : await analyze({ imageBase64: photo.base64, mimeType: photo.mime, hints, past: pastNotes(record?.id) }, settings, (msg) => {
           clearInterval(timer);
           loadingText.textContent = msg;
         });
@@ -222,6 +226,7 @@ async function run(hints?: AnalyzeInput["hints"]) {
     step = 0;
     pendingHints = undefined;
     if (history.length) history[history.length - 1].result = a.lastResult;
+    updateRecord(a, Boolean(hints?.beforePhoto));
     overlay.setAnalysis(a);
     renderResult();
     preAnalyze.hidden = true;
@@ -492,11 +497,144 @@ canvas.addEventListener("pointerup", (e) => {
   if (Math.abs(dx) > 60) goStep(step + (dx < 0 ? 1 : -1));
 });
 
+// ---------- 記録 ----------
+function updateRecord(a: Analysis, afterPlay: boolean) {
+  const first = a.steps[0];
+  const round = { thumb: currentThumb, step: first?.title ?? "", technique: first ? techniqueOf(first) : undefined, result: "first" as const };
+  if (!record) {
+    record = {
+      id: newId(),
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      outcome: "playing",
+      plays: 0,
+      price,
+      setup: a.setup,
+      setupType: a.setupType,
+      claw: a.claw,
+      clawCount: a.clawCount,
+      prizeLabel: a.prize.label,
+      rounds: [round],
+    };
+  } else if (afterPlay) {
+    // 前の回の結果を書き込み、今回の写真と作戦を足す
+    record.rounds[record.rounds.length - 1].result = a.lastResult;
+    record.rounds.push(round);
+  } else {
+    // 印を直して立て直したときは、今の回の作戦だけ置き換える
+    record.rounds[record.rounds.length - 1] = round;
+  }
+  record.plays = plays;
+  record.price = price;
+  saveRecord(record);
+}
+
+function finish(outcome: Outcome) {
+  if (record) {
+    record.outcome = outcome;
+    record.plays = outcome === "get" ? plays + 1 : plays;
+    record.price = price;
+    saveRecord(record);
+  }
+}
+
 // ---------- プレイ結果 ----------
 $("winBtn").addEventListener("click", () => {
   const n = plays + 1;
+  finish("get");
+  $("win").classList.remove("giveup");
+  $("winTitle").textContent = "GET!";
   $("winSpent").textContent = `${n}回・¥${yen(n * price)}でゲット！`;
   $("win").hidden = false;
+});
+
+$("giveupBtn").addEventListener("click", () => {
+  if (!confirm("この台はあきらめて、記録に残しますか？")) return;
+  finish("giveup");
+  $("win").classList.add("giveup");
+  $("winTitle").textContent = "おつかれさま";
+  $("winSpent").textContent = plays ? `${plays}回・¥${yen(plays * price)}。記録に残しました。` : "記録に残しました。";
+  $("win").hidden = false;
+});
+
+// ---------- 記録の一覧 ----------
+const recordsDlg = $<HTMLDialogElement>("recordsDlg");
+const OUTCOME_LABEL: Record<Outcome, { label: string; cls: string }> = {
+  get: { label: "GET", cls: "get" },
+  giveup: { label: "あきらめ", cls: "giveup" },
+  playing: { label: "途中", cls: "playing" },
+};
+const fmtDate = (t: number) => {
+  const d = new Date(t);
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+const h = <K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = "") =>
+  Object.assign(document.createElement(tag), { className: cls, textContent: text });
+
+function renderRecords() {
+  const list = loadRecords();
+  $("statGet").textContent = String(list.filter((r) => r.outcome === "get").length);
+  $("statPlays").textContent = String(list.reduce((n, r) => n + r.plays, 0));
+  $("statSpent").textContent = `¥${yen(list.reduce((n, r) => n + r.plays * r.price, 0))}`;
+  $("recEmpty").hidden = list.length > 0;
+  $("recList").replaceChildren(
+    ...list.map((r) => {
+      const li = document.createElement("li");
+      const det = document.createElement("details");
+      const sum = document.createElement("summary");
+      const cover = h("img", "rec-cover");
+      cover.src = r.rounds[0]?.thumb ?? "";
+      cover.alt = "";
+      const out = OUTCOME_LABEL[r.outcome];
+      const info = h("div", "rec-info");
+      const top = h("div", "rec-top");
+      top.append(h("span", `rec-badge ${out.cls}`, out.label), h("span", "rec-date", fmtDate(r.startedAt)));
+      const setup = SETUP_INFO[r.setupType] ?? SETUP_INFO.other;
+      const meta = h("div", "rec-meta");
+      meta.append(svgEl(setup.icon, "mini-ico"), h("span", "", setup.label), h("b", "", `${r.plays}回 ¥${yen(r.plays * r.price)}`));
+      info.append(top, meta);
+      sum.append(cover, info);
+
+      // 開くと、回ごとの写真・やった手・結果が並ぶ
+      const rounds = h("ol", "rec-rounds");
+      rounds.append(
+        ...r.rounds.map((x, i) => {
+          const item = h("li", x.result !== "first" ? RESULT_INFO[x.result].cls : "");
+          const img = h("img");
+          img.src = x.thumb;
+          img.alt = "";
+          const label = h("div", "rec-step");
+          label.append(h("b", "", `${i + 1}`), h("span", "", x.step));
+          const res = x.result !== "first" ? RESULT_INFO[x.result] : null;
+          item.append(img, label);
+          if (res) {
+            const tag = h("span", `rec-res ${res.cls}`);
+            tag.append(svgEl(res.icon, "ico"), res.label);
+            item.append(tag);
+          }
+          return item;
+        }),
+      );
+      const del = h("button", "rec-del", "この記録を消す");
+      del.type = "button";
+      del.addEventListener("click", () => {
+        if (!confirm("この記録を消しますか？")) return;
+        deleteRecord(r.id);
+        renderRecords();
+      });
+      det.append(sum, rounds, del);
+      li.append(det);
+      return li;
+    }),
+  );
+}
+
+$("recordsBtn").addEventListener("click", () => {
+  renderRecords();
+  recordsDlg.showModal();
+});
+recordsDlg.addEventListener("click", (e) => {
+  if (e.target === recordsDlg) recordsDlg.close();
 });
 
 $("winClose").addEventListener("click", () => {

@@ -16,6 +16,8 @@ export interface GeminiSettings {
 export interface AnalyzeInput {
   imageBase64: string;
   mimeType: string;
+  /** この人の過去のプレイ記録の要約（作戦の参考にする） */
+  past?: string[];
   /** ユーザーが直した位置や、プレイ前の写真など */
   hints?: {
     prize?: Box;
@@ -29,6 +31,17 @@ export interface AnalyzeInput {
 }
 
 function buildUserText(input: AnalyzeInput): string {
+  const text = buildHintText(input);
+  if (!input.past?.length) return text;
+  return [
+    text,
+    "",
+    "参考：この人の過去のプレイ記録（どの手で景品がどう動いたか）。似た台なら、動かなかった手は避けてください。",
+    ...input.past.map((p) => `- ${p}`),
+  ].join("\n");
+}
+
+function buildHintText(input: AnalyzeInput): string {
   const h = input.hints;
   if (!h) return "この台の攻略手順を考えてください。";
   const lines: string[] = [];
