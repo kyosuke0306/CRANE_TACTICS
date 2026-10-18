@@ -11,6 +11,9 @@ export type Arrow =
   | "rotate_ccw"
   | "none";
 
+/** push=爪で押す, rotate=角に掛けて回す, press=端を上から押さえて傾ける, lift=つかんで運ぶ */
+export type Technique = "push" | "rotate" | "press" | "lift";
+
 export interface Step {
   title: string;
   text: string;
@@ -18,6 +21,8 @@ export interface Step {
   target: Point;
   /** 景品をどちらへ動かしたいか */
   arrow: Arrow;
+  /** アームの使い方 */
+  technique?: Technique;
   /** この手がうまくいったあとの景品の位置と向き（予想） */
   after?: Pose;
 }

@@ -45,6 +45,7 @@ export const SYSTEM_PROMPT = `
 - box は [ymin, xmin, ymax, xmax]、点は [y, x] の順。
 - 各手順の target は「アームの中心をどこに下ろすか」を表す点。
 - arrow は「その手で景品をどちらへ動かしたいか」（写真上の向き）。
+- 各手順の technique は、その手でアームをどう使うか（押す・回す・押さえる・持ち上げる）。
 - 各手順の after は「その手がうまくいったあとの景品」。box はそのときの景品の範囲、angle は写真上で時計回りに何度回っているか（今の向きが 0）。
 - goal は「取れる瞬間の景品」。落とし口に落ちかけている位置・向きを box と angle で表し、text に形を一言で（例: 縦になって棒の間から落ちる）。
 
@@ -128,9 +129,14 @@ export const RESPONSE_SCHEMA = {
             type: "STRING",
             enum: ["left", "right", "up", "down", "rotate_cw", "rotate_ccw", "none"],
           },
+          technique: {
+            type: "STRING",
+            enum: ["push", "rotate", "press", "lift"],
+            description: "アームの使い方。push=爪で押す, rotate=角に掛けて回す, press=端を上から押さえて傾ける, lift=つかんで運ぶ",
+          },
           after: POSE_SCHEMA,
         },
-        required: ["title", "text", "target", "arrow", "after"],
+        required: ["title", "text", "target", "arrow", "technique", "after"],
       },
     },
     tries: {

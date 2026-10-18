@@ -1,6 +1,7 @@
 import "./style.css";
 import { takePhoto } from "./camera";
 import { analyze, demoAnalysis, DEFAULT_MODEL, PROXY_URL, type AnalyzeInput, type GeminiSettings } from "./gemini";
+import { StepDiagram, techniqueOf } from "./diagram";
 import { Overlay } from "./overlay";
 import type { Analysis, LastResult, SetupType } from "./types";
 
@@ -19,6 +20,8 @@ const reanalyzeBtn = $<HTMLButtonElement>("reanalyzeBtn");
 const settingsDlg = $<HTMLDialogElement>("settings");
 
 const overlay = new Overlay(canvas);
+const diagram = new StepDiagram($("diagram"));
+const TECH_LABEL = { push: "押す", rotate: "回す", press: "押さえる", lift: "持ち上げる" } as const;
 const isDemo = new URLSearchParams(location.search).has("demo");
 
 // ---------- 状態 ----------
@@ -457,6 +460,8 @@ function renderStep() {
   $<HTMLButtonElement>("prevStep").disabled = step <= 0;
   $<HTMLButtonElement>("nextStep").disabled = step >= last;
   overlay.setStep(step);
+  diagram.show(isGoal ? null : analysis, step);
+  if (s && !isGoal) $("techLabel").textContent = TECH_LABEL[techniqueOf(s)];
 }
 
 function goStep(i: number) {
