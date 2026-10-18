@@ -510,6 +510,63 @@ canvas {
   border-color: var(--pink);
   color: #fff;
 }
+.step-dots button.now {
+  position: relative;
+  border-color: var(--pink);
+  color: var(--pink);
+  animation: now-pulse 1.8s ease-out infinite;
+}
+.step-dots button.now.active {
+  color: #fff;
+}
+.step-dots button.now::after {
+  content: "今";
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 3px);
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--pink);
+}
+@keyframes now-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 77, 109, 0.6); }
+  70%, 100% { box-shadow: 0 0 0 8px rgba(255, 77, 109, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .step-dots button.now { animation: none; }
+}
+.now-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 16px;
+  padding: 4px 12px 4px 8px;
+  border-radius: 999px;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+}
+.now-tag .ico {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+.now-tag.now {
+  background: var(--pink);
+  color: #fff;
+  pointer-events: none;
+}
+.now-tag.now .ico {
+  fill: currentColor;
+}
+.now-tag.later {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+}
 .step-dots .goal-dot {
   display: inline-flex;
   align-items: center;
@@ -537,7 +594,7 @@ canvas {
   letter-spacing: 0.04em;
 }
 .step-card h2 {
-  margin: 12px 0 6px;
+  margin: 8px 0 6px;
   font-size: 19px;
   font-weight: 900;
 }

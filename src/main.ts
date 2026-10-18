@@ -435,7 +435,8 @@ function renderStep() {
     ...steps.map((_, i) => {
       const b = document.createElement("button");
       b.textContent = String(i + 1);
-      b.className = i === step ? "active" : "";
+      // 1つ目が「今やる手」（結果を撮るたびに作戦が今の位置から立て直される）
+      b.className = [i === step ? "active" : "", i === 0 ? "now" : ""].join(" ").trim();
       b.setAttribute("aria-label", `手順${i + 1}`);
       b.addEventListener("click", () => goStep(i));
       return b;
@@ -450,6 +451,14 @@ function renderStep() {
     })(),
   );
   $("stepCard").classList.toggle("goal", isGoal);
+  const nowTag = $("nowTag");
+  nowTag.hidden = isGoal;
+  nowTag.className = step === 0 ? "now-tag now" : "now-tag later";
+  nowTag.setAttribute("aria-label", step === 0 ? "今やる手" : "あとでやる手（押すと今の手へ戻る）");
+  nowTag.replaceChildren(
+    svgEl(step === 0 ? '<path d="M8 5l11 7-11 7z"/>' : '<path d="M15 6l-6 6 6 6"/>', "ico"),
+    step === 0 ? "今やる" : "あとでやる",
+  );
   if (isGoal) {
     $("stepTitle").textContent = "GET!";
     $("stepText").textContent = analysis.goal.text;
@@ -470,6 +479,7 @@ function goStep(i: number) {
   renderStep();
 }
 $("prevStep").addEventListener("click", () => goStep(step - 1));
+$("nowTag").addEventListener("click", () => goStep(0));
 $("nextStep").addEventListener("click", () => goStep(step + 1));
 
 // 写真の左右スワイプでも手順を切り替え（印のドラッグ中は除く）
