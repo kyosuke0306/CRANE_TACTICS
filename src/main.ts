@@ -454,7 +454,7 @@ function renderStep() {
     $("stepTitle").textContent = "GET!";
     $("stepText").textContent = analysis.goal.text;
   } else {
-    $("stepTitle").textContent = s ? `${step + 1}. ${s.title}` : "手順が見つかりませんでした";
+    $("stepTitle").textContent = s ? s.title : "手順が見つかりませんでした";
     $("stepText").textContent = s?.text ?? "写真を撮り直すか、印を直して作戦を立て直してください。";
   }
   $<HTMLButtonElement>("prevStep").disabled = step <= 0;
