@@ -1129,6 +1129,24 @@ dialog::backdrop {
 .camera-guide.bump {
   animation: pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
 }
+.camera-library {
+  position: absolute;
+  left: 24px;
+  bottom: calc(40px + env(safe-area-inset-bottom));
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  cursor: pointer;
+}
+.camera-library .ico {
+  width: 26px;
+  height: 26px;
+}
 .camera-skip {
   position: absolute;
   right: 20px;

@@ -36,6 +36,8 @@ export async function takePhotos(shots: Shot[]): Promise<(Blob | null)[] | null 
   const shutter = $<HTMLButtonElement>("shutterBtn");
   const close = $<HTMLButtonElement>("cameraClose");
   const skip = $<HTMLButtonElement>("cameraSkip");
+  const library = $<HTMLButtonElement>("cameraLibrary");
+  const libraryInput = $<HTMLInputElement>("libraryInput");
   const guide = $("cameraGuide");
   const guideIcon = $("cameraGuideIcon");
   const guideLabel = $("cameraGuideLabel");
@@ -68,6 +70,8 @@ export async function takePhotos(shots: Shot[]): Promise<(Blob | null)[] | null 
       shutter.removeEventListener("click", onShutter);
       close.removeEventListener("click", onClose);
       skip.removeEventListener("click", onSkip);
+      library.removeEventListener("click", onLibrary);
+      libraryInput.removeEventListener("change", onLibraryPicked);
       stream.getTracks().forEach((t) => t.stop());
       video.srcObject = null;
       view.hidden = true;
@@ -92,11 +96,20 @@ export async function takePhotos(shots: Shot[]): Promise<(Blob | null)[] | null 
       c.toBlob((b) => next(b), "image/jpeg", 0.92);
     };
     const onSkip = () => next(null);
+    // 保存してある写真を、この1枚の代わりに使う（テストや撮り忘れ用）
+    const onLibrary = () => libraryInput.click();
+    const onLibraryPicked = () => {
+      const f = libraryInput.files?.[0];
+      libraryInput.value = "";
+      if (f) next(f);
+    };
     // 1枚目を撮ったあとに閉じたら、撮れた分だけで進める
     const onClose = () => finish(results.length ? [...results, ...shots.slice(results.length).map(() => null)] : null);
     shutter.addEventListener("click", onShutter);
     close.addEventListener("click", onClose);
     skip.addEventListener("click", onSkip);
+    library.addEventListener("click", onLibrary);
+    libraryInput.addEventListener("change", onLibraryPicked);
     showShot(0);
   });
 }
