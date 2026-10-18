@@ -93,11 +93,20 @@ export class StepDiagram {
     const boxH = 40;
     const lift = a.setupType === "stones" ? 9 : a.setupType === "bridge" ? 14 : 0;
     const holeW = 40;
-    const holeX = dir > 0 ? W - holeW - 10 : 10;
+    // 押さえるときはアームが穴の上に来るので、穴を少し内側に置いて画面からはみ出さないようにする
+    const margin = tech === "press" ? 40 : 10;
+    const holeX = dir > 0 ? W - holeW - margin : margin;
     const holeEdge = dir > 0 ? holeX : holeX + holeW; // 景品側の穴の縁
-    // 景品の最初の位置。押さえるときは穴に少しはみ出している状態から
+    // 押さえるとき、どちらの端を押さえるか（写真の目標点が景品の左右どちら寄りか）
+    const pressSide = (s.target[1] - p[1]) / pw < 0.5 ? -1 : 1;
+    const pressNear = pressSide === dir; // 穴側の端を押さえる
+    // 景品の最初の位置。穴側の端を押さえるときは、穴に少しはみ出している状態から
     const boxCx0 =
-      tech === "press" ? holeEdge - dir * (boxW / 2 - 16) : tech === "lift" ? W / 2 - dir * 40 : W / 2 - dir * 30;
+      tech === "press"
+        ? holeEdge - dir * (pressNear ? boxW / 2 - 16 : boxW / 2 + 22)
+        : tech === "lift"
+          ? W / 2 - dir * 40
+          : W / 2 - dir * 30;
     const boxLeft0 = boxCx0 - boxW / 2;
     const boxBottom = FLOOR - lift;
     const boxTop = boxBottom - boxH;
@@ -105,7 +114,8 @@ export class StepDiagram {
     // アームを下ろす位置
     let clawX0: number;
     if (tech === "lift") clawX0 = boxCx0;
-    else if (tech === "press") clawX0 = boxCx0 + dir * (boxW / 2 - 10); // 穴の上にはみ出した端を押さえる
+    // 押さえる：開いた爪の内側の先が、押さえる端の少し内側に乗る位置
+    else if (tech === "press") clawX0 = boxCx0 + pressSide * (boxW / 2 + 14);
     else {
       // 押す：写真の目標点を景品の幅に対する割合で写す（奥・手前に押すときは押す側の端）
       // 爪は押したい向きの反対側の端に掛ける
@@ -136,7 +146,7 @@ export class StepDiagram {
 
     // 景品を動かす向き（うっすら、アームと重ならない上の端に）。押さえるときは出さない
     const gx = dir > 0 ? W - 64 : 64;
-    if (tech !== "press")
+    if (tech !== "press" || !pressNear)
       svg.append(
       el("path", {
         d: `M${gx - dir * 22} 16h${dir * 40}m${-dir * 7}-6 ${dir * 7} 6-${dir * 7} 6`,
@@ -163,10 +173,11 @@ export class StepDiagram {
     const top = 6;
     // 爪の先がどこで止まるか：景品の上なら景品の上面、それ以外は床
     let boxLeft = boxLeft0;
-    const stopY = (x: number) => (x > boxLeft + 2 && x < boxLeft + boxW - 2 ? boxTop : boxBottom);
+    let dip = 0; // 押さえて沈んだぶん
+    const stopY = (x: number) => (x > boxLeft + 2 && x < boxLeft + boxW - 2 ? boxTop + dip : boxBottom);
     // 開いた爪の先が床（景品の上）に届くまで下ろす
     const reach = Math.max(stopY(clawX0 - 20), stopY(clawX0 + 20), stopY(clawX0));
-    const downY = tech === "press" ? boxTop - 56 : tech === "lift" ? boxTop - 34 : reach - 55;
+    const downY = tech === "press" ? boxTop - 55 : tech === "lift" ? boxTop - 34 : reach - 55;
 
     return (t) => {
       const down = seg(t, 0.05, 0.3);
@@ -185,16 +196,26 @@ export class StepDiagram {
         px += dir * 22 * close;
         clawY -= (downY - top) * up;
       } else if (tech === "press") {
-        // 穴にはみ出した端を上から押さえる → 縁を支点に傾いて落ちる
-        const press = seg(t, 0.3, 0.45);
-        const fall = seg(t, 0.45, 0.62);
-        clawY += 12 * press - (downY - top + 12) * up;
-        rot = dir * (10 * press + 50 * fall);
-        pivot = holeEdge - boxCx0; // 穴の縁のあたりを支点に
-        px += dir * 14 * fall;
-        py += 30 * fall;
-        if (t > 0.66) py = H + 60;
-        grip = 1; // 閉じた爪の先で押さえる
+        // 開いたまま降りて、内側の爪の先が端に乗る → 閉じながら端を押し下げる
+        rot = pressSide * 12 * close;
+        dip = 10 * close;
+        clawY += 8 * close;
+        if (pressNear) {
+          // 穴側の端が沈み、縁を支点に傾いて穴へ落ちる
+          const fall = seg(t, 0.5, 0.64);
+          rot += dir * 45 * fall;
+          pivot = holeEdge - boxCx0;
+          px += dir * 14 * fall;
+          py += 30 * fall;
+          if (t > 0.68) py = H + 60;
+        } else {
+          // 押さえた角を支点に穴側の端が浮き、穴のほうへずれる
+          pivot = pressSide * (boxW / 2);
+          const slide = seg(t, 0.5, 0.66);
+          px += dir * 26 * slide;
+          rot -= pressSide * 8 * slide;
+        }
+        clawY -= (downY - top + 8) * up;
       } else {
         // つかんで持ち上げ、穴の上まで運んで離す
         const liftY = 44 * seg(t, 0.46, 0.56);
@@ -212,7 +233,7 @@ export class StepDiagram {
 
       boxLeft = px - boxW / 2;
       prize.setAttribute("transform", `translate(${px} ${py}) rotate(${rot} ${pivot} 0)`);
-      claw.set(clawX, clawY, grip, tech === "push" ? stopY : undefined);
+      claw.set(clawX, clawY, grip, tech === "lift" ? undefined : stopY);
     };
   }
 
