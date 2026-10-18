@@ -1,5 +1,5 @@
 import "./style.css";
-import { takePhoto } from "./camera";
+import { takePhoto, takePhotos } from "./camera";
 import { analyze, demoAnalysis, DEFAULT_MODEL, PROXY_URL, type AnalyzeInput, type GeminiSettings } from "./gemini";
 import { StepDiagram, techniqueOf } from "./diagram";
 import { Overlay } from "./overlay";
@@ -27,6 +27,8 @@ const isDemo = new URLSearchParams(location.search).has("demo");
 
 // ---------- 状態 ----------
 let photo: { base64: string; mime: string } | null = null;
+/** 横から撮った写真（この台のあいだずっと参考に使う） */
+let sidePhoto: { base64: string; mime: string } | null = null;
 let analysis: Analysis | null = null;
 let step = 0;
 /** 結果の写真を撮った回数（＝プレイした回数） */
@@ -151,6 +153,31 @@ async function onPhoto(file: Blob | null | undefined, isResult: boolean) {
   }
 }
 
+const FRONT_ICON = '<rect x="4" y="5" width="16" height="12" rx="1.5"/><path d="M12 17v3M8 20h8"/>';
+const SIDE_ICON = '<rect x="3" y="7" width="12" height="12" rx="1.5"/><path d="M15 9l5-3v12l-5-3"/>';
+
+// 新しい台：正面を撮ったら、続けて横からも撮る（横はスキップできる）
+async function captureNew() {
+  const r = await takePhotos([
+    { label: "正面", icon: FRONT_ICON },
+    { label: "横から", icon: SIDE_ICON, optional: true },
+  ]);
+  if (r === "unavailable") {
+    $<HTMLInputElement>("cameraInput").click();
+    return;
+  }
+  if (!r || !r[0]) return;
+  await onPhoto(r[0], false);
+  setSide(r[1] ? await readPhoto(r[1]) : null);
+}
+
+function setSide(p: { base64: string; mime: string; thumb: string } | null) {
+  sidePhoto = p ? { base64: p.base64, mime: p.mime } : null;
+  const inset = $<HTMLImageElement>("sideInset");
+  inset.hidden = !p;
+  if (p) inset.src = p.thumb;
+}
+
 // アプリ内カメラで撮る。使えないときだけ端末標準の撮影画面に任せる
 async function capture(keepContext: boolean, fallbackInput: string) {
   const result = await takePhoto();
@@ -160,12 +187,12 @@ async function capture(keepContext: boolean, fallbackInput: string) {
   }
   onPhoto(result, keepContext);
 }
-$("cameraBtn").addEventListener("click", () => capture(false, "cameraInput"));
+$("cameraBtn").addEventListener("click", () => captureNew());
 $("retakeBtn").addEventListener("click", () => capture(true, "retakeInput"));
 
 $<HTMLInputElement>("cameraInput").addEventListener("change", (e) => {
   const input = e.target as HTMLInputElement;
-  onPhoto(input.files?.[0], false);
+  onPhoto(input.files?.[0], false).then(() => setSide(null));
   input.value = "";
 });
 $<HTMLInputElement>("retakeInput").addEventListener("change", (e) => {
@@ -189,6 +216,7 @@ function resetAll() {
 
 function backToStart() {
   photo = null;
+  setSide(null);
   resetAll();
   boardEl.hidden = true;
   startEl.hidden = false;
@@ -218,7 +246,7 @@ async function run(hints?: AnalyzeInput["hints"]) {
   try {
     const a = isDemo
       ? await new Promise<Analysis>((r) => setTimeout(() => r(demoAnalysis(hints?.plays ?? 0)), 900))
-      : await analyze({ imageBase64: photo.base64, mimeType: photo.mime, hints, past: pastNotes(record?.id) }, settings, (msg) => {
+      : await analyze({ imageBase64: photo.base64, mimeType: photo.mime, hints, sidePhoto: sidePhoto ?? undefined, past: pastNotes(record?.id) }, settings, (msg) => {
           clearInterval(timer);
           loadingText.textContent = msg;
         });

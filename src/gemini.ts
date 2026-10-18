@@ -16,6 +16,8 @@ export interface GeminiSettings {
 export interface AnalyzeInput {
   imageBase64: string;
   mimeType: string;
+  /** 横から撮った写真（奥行き・高さの参考） */
+  sidePhoto?: { base64: string; mime: string };
   /** この人の過去のプレイ記録の要約（作戦の参考にする） */
   past?: string[];
   /** ユーザーが直した位置や、プレイ前の写真など */
@@ -31,7 +33,12 @@ export interface AnalyzeInput {
 }
 
 function buildUserText(input: AnalyzeInput): string {
-  const text = buildHintText(input);
+  let text = buildHintText(input);
+  if (input.sidePhoto) {
+    text +=
+      "\n最後の写真は、同じ台を横から撮ったものです。景品の奥行き・高さ・落とし口までの距離の参考にしてください。" +
+      "座標はすべて正面の写真（横からの写真の直前の1枚）に対して出してください。";
+  }
   if (!input.past?.length) return text;
   return [
     text,
@@ -72,6 +79,7 @@ function buildRequestBody(input: AnalyzeInput) {
             ? [{ inlineData: { mimeType: input.hints.beforePhoto.mime, data: input.hints.beforePhoto.base64 } }]
             : []),
           { inlineData: { mimeType: input.mimeType, data: input.imageBase64 } },
+          ...(input.sidePhoto ? [{ inlineData: { mimeType: input.sidePhoto.mime, data: input.sidePhoto.base64 } }] : []),
           { text: buildUserText(input) },
         ],
       },
