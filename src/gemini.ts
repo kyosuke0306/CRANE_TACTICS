@@ -217,7 +217,15 @@ export function normalize(a: any): Analysis {
       : [],
     steps: (Array.isArray(a?.steps) ? a.steps : []).slice(0, 6).map(
       (
-        s: { title?: string; text?: string; target?: unknown; arrow?: string; technique?: string; after?: unknown },
+        s: {
+          title?: string;
+          text?: string;
+          target?: unknown;
+          arrow?: string;
+          technique?: string;
+          after?: unknown;
+          sideTarget?: unknown;
+        },
         i: number,
       ) => ({
         title: String(s?.title ?? `手順${i + 1}`),
@@ -226,8 +234,13 @@ export function normalize(a: any): Analysis {
         arrow: ARROWS.includes(s?.arrow as Arrow) ? (s.arrow as Arrow) : "none",
         technique: TECHNIQUES.includes(s?.technique as Technique) ? (s.technique as Technique) : undefined,
         after: toPose(s?.after, prizeBox),
+        sideTarget: Array.isArray(s?.sideTarget) && s.sideTarget.length >= 2 ? toPoint(s.sideTarget, [500, 500]) : undefined,
       }),
     ),
+    side:
+      a?.side && Array.isArray(a.side.prize) && Array.isArray(a.side.hole)
+        ? { prize: toBox(a.side.prize, [500, 300, 800, 600]), hole: toBox(a.side.hole, [600, 0, 900, 200]) }
+        : undefined,
     tries: toTries(a?.tries),
     goal: {
       ...(toPose(a?.goal, holeBox) ?? { box: holeBox, angle: 0 }),
@@ -257,6 +270,7 @@ export function demoAnalysis(round = 0): Analysis {
         target: [740, 170],
         arrow: "right",
         technique: "push",
+        sideTarget: [640, 520],
         after: { box: [620, 260, 880, 510], angle: 0 },
       },
       {
@@ -265,6 +279,7 @@ export function demoAnalysis(round = 0): Analysis {
         target: [650, 470],
         arrow: "rotate_cw",
         technique: "rotate",
+        sideTarget: [600, 600],
         after: { box: [630, 340, 870, 590], angle: 25 },
       },
       {
@@ -273,9 +288,11 @@ export function demoAnalysis(round = 0): Analysis {
         target: [760, 400],
         arrow: "none",
         technique: "press",
+        sideTarget: [620, 420],
         after: { box: [650, 450, 860, 680], angle: 40 },
       },
     ],
+    side: { prize: [560, 380, 820, 640], hole: [620, 40, 900, 260] },
     tries: { min: 4, max: 7 },
     goal: { box: [680, 560, 860, 740], angle: 70, text: "角から穴に傾いて落ちる" },
     cautions: [

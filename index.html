@@ -80,7 +80,7 @@
       <section id="board" class="board" hidden>
         <div class="stage">
           <canvas id="canvas"></canvas>
-          <img id="sideInset" class="side-inset" alt="横から撮った写真" hidden />
+          <canvas id="sideCanvas" class="side-inset" aria-label="横から撮った写真（タップで広げる）" hidden></canvas>
           <div id="photoInfo" class="photo-info" hidden>
             <div class="tile mini" id="setupTile"></div>
             <div class="tile mini" id="clawTile"></div>
@@ -255,8 +255,12 @@
         </div>
         <label>
           モデル
-          <input id="model" type="text" placeholder="gemini-flash-lite-latest" />
+          <select id="model">
+            <option value="gemini-flash-lite-latest">軽い版（速い・混みにくい）</option>
+            <option value="gemini-flash-latest">通常版（読み取りが細かい・混みやすい）</option>
+          </select>
         </label>
+        <p class="note">混雑して答えが返ってこないときは、自動でもう一方のモデルで試します。</p>
         <p class="note">無料枠では送った写真が Google のモデル改善に使われる場合があります。</p>
         <div class="row end">
           <button value="cancel" class="btn btn-ghost">閉じる</button>

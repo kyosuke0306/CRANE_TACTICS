@@ -21,6 +21,8 @@ export interface Step {
   target: Point;
   /** 景品をどちらへ動かしたいか */
   arrow: Arrow;
+  /** 横からの写真で、前後（奥行き）をどこで止めるか */
+  sideTarget?: Point;
   /** アームの使い方 */
   technique?: Technique;
   /** この手がうまくいったあとの景品の位置と向き（予想） */
@@ -48,6 +50,8 @@ export interface Analysis {
   hole: { box: Box };
   obstacles: { label: string; box: Box }[];
   steps: Step[];
+  /** 横からの写真での景品と落とし口（横からの写真があるときだけ） */
+  side?: { prize: Box; hole: Box };
   /** 取れるまでの見込みプレイ回数 */
   tries: { min: number; max: number };
   /** 取れる瞬間の景品の形 */

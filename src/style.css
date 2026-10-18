@@ -633,6 +633,7 @@ canvas {
   margin: 10px 2px;
 }
 
+select,
 input[type="number"],
 input[type="text"],
 input[type="password"] {
@@ -1146,14 +1147,18 @@ dialog::backdrop {
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 25%;
-  max-width: 110px;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
   border-radius: 8px;
-  border: 2px solid rgba(255, 255, 255, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
+  cursor: zoom-in;
+  z-index: 2;
+}
+.side-inset.expanded {
+  top: 50%;
+  right: 50%;
+  transform: translate(50%, -50%);
+  cursor: zoom-out;
+  border-color: var(--yellow);
 }
 .shutter {
   position: absolute;

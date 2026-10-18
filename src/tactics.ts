@@ -49,6 +49,12 @@ export const SYSTEM_PROMPT = `
 - 各手順の after は「その手がうまくいったあとの景品」。box はそのときの景品の範囲、angle は写真上で時計回りに何度回っているか（今の向きが 0）。
 - goal は「取れる瞬間の景品」。落とし口に落ちかけている位置・向きを box と angle で表し、text に形を一言で（例: 縦になって棒の間から落ちる）。
 
+横から撮った写真があるとき:
+- 実際のプレイでは、1つ目のボタンで左右、2つ目のボタンで前後（奥行き）を合わせる。前後は横からのぞいて止める人が多い。
+- 各手順の sideTarget に、横からの写真上で「アームの中心をどこで止めるか」を [y, x] で入れる（座標は横からの写真に対して）。
+- side に、横からの写真での景品と落とし口の box を入れる。
+- 横からの写真がないときは sideTarget と side を出さない。
+
 結果の写真が2枚あるとき:
 - 1枚目はプレイ前、2枚目はプレイ後の今の台。景品がどう動いたかを見比べて lastResult に入れる。
 - 座標・手順はすべて2枚目（今の写真）に対して出す。前回の作戦を引き継ぎ、続きの手を考える。
@@ -135,9 +141,23 @@ export const RESPONSE_SCHEMA = {
             description: "アームの使い方。push=爪で押す, rotate=角に掛けて回す, press=端を上から押さえて傾ける, lift=つかんで運ぶ",
           },
           after: POSE_SCHEMA,
+          sideTarget: {
+            type: "ARRAY",
+            items: { type: "NUMBER" },
+            description: "横からの写真があるときだけ。横からの写真上で、アームを前後どこで止めるか [y, x]",
+          },
         },
         required: ["title", "text", "target", "arrow", "technique", "after"],
       },
+    },
+    side: {
+      type: "OBJECT",
+      description: "横からの写真があるときだけ。横からの写真上の景品と落とし口",
+      properties: {
+        prize: { type: "ARRAY", items: { type: "NUMBER" } },
+        hole: { type: "ARRAY", items: { type: "NUMBER" } },
+      },
+      required: ["prize", "hole"],
     },
     tries: {
       type: "OBJECT",

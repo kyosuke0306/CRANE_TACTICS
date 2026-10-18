@@ -3,6 +3,7 @@ import { takePhoto, takePhotos } from "./camera";
 import { analyze, demoAnalysis, DEFAULT_MODEL, PROXY_URL, type AnalyzeInput, type GeminiSettings } from "./gemini";
 import { StepDiagram, techniqueOf } from "./diagram";
 import { Overlay } from "./overlay";
+import { SideView } from "./sideview";
 import { deleteRecord, loadRecords, newId, pastNotes, saveRecord, type Outcome, type PlayRecord } from "./records";
 import type { Analysis, LastResult, SetupType } from "./types";
 
@@ -22,6 +23,7 @@ const settingsDlg = $<HTMLDialogElement>("settings");
 
 const overlay = new Overlay(canvas);
 const diagram = new StepDiagram($("diagram"));
+const sideView = new SideView($<HTMLCanvasElement>("sideCanvas"));
 const TECH_LABEL = { push: "押す", rotate: "回す", press: "押さえる", lift: "持ち上げる" } as const;
 const isDemo = new URLSearchParams(location.search).has("demo");
 
@@ -69,7 +71,10 @@ let settings = loadSettings();
 function openSettings() {
   $("keyFields").hidden = Boolean(PROXY_URL);
   $<HTMLInputElement>("apiKey").value = settings.apiKey;
-  $<HTMLInputElement>("model").value = settings.model;
+  const sel = $<HTMLSelectElement>("model");
+  // 以前に手で入れたモデル名なら、選べるように足しておく
+  if (![...sel.options].some((o) => o.value === settings.model)) sel.add(new Option(settings.model, settings.model));
+  sel.value = settings.model;
   settingsDlg.showModal();
 }
 $("settingsBtn").addEventListener("click", openSettings);
@@ -84,7 +89,7 @@ settingsDlg.addEventListener("close", () => {
   if (settingsDlg.returnValue !== "save") return;
   settings = {
     apiKey: $<HTMLInputElement>("apiKey").value.trim(),
-    model: $<HTMLInputElement>("model").value.trim() || DEFAULT_MODEL,
+    model: $<HTMLSelectElement>("model").value || DEFAULT_MODEL,
   };
   saveSettings(settings);
 });
@@ -171,11 +176,9 @@ async function captureNew() {
   setSide(r[1] ? await readPhoto(r[1]) : null);
 }
 
-function setSide(p: { base64: string; mime: string; thumb: string } | null) {
+function setSide(p: { base64: string; mime: string; img: HTMLImageElement } | null) {
   sidePhoto = p ? { base64: p.base64, mime: p.mime } : null;
-  const inset = $<HTMLImageElement>("sideInset");
-  inset.hidden = !p;
-  if (p) inset.src = p.thumb;
+  sideView.setImage(p ? p.img : null);
 }
 
 // アプリ内カメラで撮る。使えないときだけ端末標準の撮影画面に任せる
@@ -208,6 +211,7 @@ function resetAll() {
   history = [];
   pendingHints = undefined;
   overlay.setAnalysis(null);
+  sideView.setData(null, 0);
   $("photoInfo").hidden = true;
   preAnalyze.hidden = false;
   resultEl.hidden = true;
@@ -502,6 +506,7 @@ function renderStep() {
   $<HTMLButtonElement>("prevStep").disabled = step <= 0;
   $<HTMLButtonElement>("nextStep").disabled = step >= last;
   overlay.setStep(step);
+  sideView.setData(analysis, isGoal ? -1 : step);
   diagram.show(isGoal ? null : analysis, step);
   if (s && !isGoal) $("techLabel").textContent = TECH_LABEL[techniqueOf(s)];
 }
